@@ -22,9 +22,11 @@ If anything under `src/sim/` or `src/data/` changed, also run `npm run determini
 
 ## Where things stand
 
-Built: the sim for Tier 1 (flight, factory, autocannon, assist tools) and the hub rules (readiness, certification, idle farming, saves). `src/main.ts` and `src/render/debugRenderer.ts` are a debug page, not the game's UI.
+Built: the sim for Tier 1 (flight, factory, autocannon, assist tools), the hub rules (readiness, certification, idle farming, saves), and the shipyard screen (`src/ui/shipyard.ts` over `src/game/editor.ts`). `src/debug.ts` and `debug.html` are a debug page, not the game's UI.
 
-Next, to make the Tier 1 loop playable (spec section 15, milestones 2 and 4): the shipyard screen, then hub, launch setup and run report screens wired to `src/game/` and an `IndexedDbStore` save. Section 12 specifies the screens and touch tools.
+Next, to make the Tier 1 loop playable (spec section 15, milestone 4): hub, launch setup, run view and run report screens wired to `src/game/` and the `IndexedDbStore` save. Section 12 specifies the screens.
+
+The UI uses no framework. Check screens in a real browser at phone size (Playwright with `devices['iPhone 13']`), not only with unit tests.
 
 Decided by the owner: 8 slugs per plate. Still provisional: Lane 1 densities, and tapping a target without first choosing an assist tool.
 

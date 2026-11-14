@@ -3,3 +3,5 @@ export * from './idle';
 export * from './save';
 export * from './game';
 export * from './assistBot';
+export * from './editor';
+export * from './readouts';

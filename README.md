@@ -17,7 +17,9 @@ Milestones 1 (Flight) and 3 (Factory and guns) of the build order are in place, 
 - Assist tools (section 13): Deck gun and Patch as sim commands, offered and sized per lane in lane data, replayable from the input log. The page takes taps: an asteroid for the Deck gun, a damaged part for Patch. A scripted assist bot lets the harness measure assisted runs.
 - Two ships in `src/data/designs/`: the starter, and a two-gun Tier 1 reference ship.
 
-Not built yet: the other four turrets and their projectiles, enemy ships, shields and power, contracts and unlocks, the shipyard, and every real screen. The debug page stands in for the run view and has a Readiness button; nothing is saved from it yet.
+- The shipyard (milestone 2, section 12): design grid, part palette, place, path, rotate, move and erase, symmetry, undo and redo, and live readouts, saved to IndexedDB as you edit. The editing rules are `DesignEditor` in `src/game/editor.ts`; the readouts are `shipStats` in `src/game/readouts.ts`.
+
+Not built yet: the other four turrets and their projectiles, enemy ships, shields and power, contracts and unlocks, and the rest of the loop's screens. The debug page (`debug.html`) stands in for the run view and has a Readiness button; nothing is saved from it.
 
 ### Where the numbers stand
 
@@ -54,7 +56,7 @@ npm run balance -- --design starter --lane lane1 --seeds 20
 npm run determinism
 ```
 
-`npm run dev` serves the flight debug page: a ship flying Lane 1 on its own. Add `?design=reference1&seed=5&speed=4` to the URL to pick the ship and run.
+`npm run dev` serves the game at `/` and the flight debug page at `/debug.html`: a ship flying Lane 1 on its own. Add `?design=reference1&seed=5&speed=4` to the debug page's URL to pick the ship and run.
 
 `npm run balance` runs the lane's readiness check and prints the report. Add `--assist` to fly the same seeds again with the assist bot. It takes a design name from `src/data/designs/` or a path to a design JSON file.
 
@@ -71,7 +73,8 @@ Pushes to `main` run the tests, build, and deploy `dist/` to GitHub Pages throug
 | `src/sim/` | The simulation. Imports nothing from the browser, `render/` or `ui/`. |
 | `src/game/` | Hub-side rules over the save record. No DOM; only `readinessPool.ts` and `IndexedDbStore` need a browser. |
 | `src/data/` | Every tunable number: parts, asteroids, behaviors, lanes, constants, designs. |
-| `src/render/` | The debug renderer. Reads sim state, never writes it. |
+| `src/render/` | Canvas renderers for the run and the shipyard, and the shared part look. Read state, never write it. |
+| `src/ui/` | The game's screens, with no framework: `h()` in `dom.ts` builds elements, and each screen updates its own. |
 | `scripts/` | Balance harness and determinism runner. |
 | `tests/` | Unit tests and stored determinism hashes. |
 
@@ -93,6 +96,18 @@ These keep runs identical across engines. Breaking one silently invalidates read
 - The tick runs the ten steps of section 3 in order, in `Sim.step()`.
 - A belt's `rot` is the way items move. An inserter's `rot` is the way it drops: it takes from the cell behind it.
 - A machine with no `recipe` in the design and more than one possible recipe picks by input, like the crusher.
+- The shipyard edits in a 64×64 workspace with the ship near the middle; designs are stored with their top-left tile at (0,0).
+
+## Shipyard behaviour
+
+- **Placement errors** come from `validateDesign`: an edit is refused if it adds a problem the design did not already have. Problems that block launch (including size, from `checkLaunch` rules) are listed under the readouts.
+- **Costs** are paid and refunded as you edit. A ship may cost up to the stockpile plus what it is already worth.
+- **Tiles must touch the hull** when laid, so drags grow outward from the core. Erasing a tile that would cut others off is refused. An erase drag takes only parts or only tiles, whichever it hit first.
+- **Path parts** (tile, belt, pipe) are laid by dragging; a belt points the way the drag went, and dragging over a belt re-points it. Tapping a belt with the belt selected turns it.
+- **Rotation** of the part to place: tap the selected palette chip again. Thrusters start facing back.
+- **Move**: long-press a part with any tool but Erase, then drag. It keeps its place in the part order.
+- **Symmetry** mirrors across the core's centre line. A 3-wide core puts that line through a cell, so a mirrored ship has an odd width: 7 at most on Lane 1.
+- **Rotate** keeps a part's top-left corner when the turned part fits there, otherwise tries turning it about its centre.
 
 ## Choices made where the spec was silent or needed adjusting
 

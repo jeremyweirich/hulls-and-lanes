@@ -4,48 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#0b0e14">
-  <title>Hulls &amp; Lanes — flight debug</title>
-  <style>
-    html, body { margin: 0; height: 100%; background: #0b0e14; color: #d7dde8; overflow: hidden;
-      font: 13px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-    #hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
-      background: linear-gradient(#0b0e14e6, #0b0e1400); pointer-events: none; white-space: pre; }
-    #bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; flex-wrap: wrap;
-      padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: #0b0e14cc; }
-    button { flex: 1 1 auto; min-width: 52px; min-height: 44px; border: 1px solid #2c3546; border-radius: 8px;
-      background: #161c28; color: inherit; font: inherit; }
-    #assist { position: fixed; left: 10px; right: 10px; bottom: 124px; display: flex; gap: 6px; pointer-events: none; }
-    .chip { flex: 1; position: relative; overflow: hidden; padding: 7px 10px; border-radius: 8px;
-      border: 1px solid #2c3546; background: #121826d9; color: #8894a8; }
-    .chip.ready { color: #ffd84a; border-color: #6b5a1a; }
-    .chip i { position: absolute; left: 0; bottom: 0; height: 3px; background: #ffd84a; }
-    #panel { position: fixed; left: 10px; right: 10px; bottom: 168px; padding: 12px 14px; border-radius: 10px;
-      background: #121826f2; border: 1px solid #2c3546; white-space: pre-wrap; display: none; }
-    #panel.open { display: block; }
-    #panel b { color: #7dffa0; font-weight: 600; }
-    #panel b.low { color: #ffb347; }
-    button[aria-pressed="true"] { background: #2b4a7a; border-color: #5b8fd6; }
-    button:active { background: #22304a; }
-  </style>
+  <title>Hulls &amp; Lanes</title>
 </head>
 <body>
-  <canvas id="view"></canvas>
-  <div id="hud"></div>
-  <div id="assist"></div>
-  <div id="panel" role="status" aria-live="polite"></div>
-  <div id="bar">
-    <button id="pause" aria-pressed="false">Pause</button>
-    <button data-speed="1" aria-pressed="true">1×</button>
-    <button data-speed="2" aria-pressed="false">2×</button>
-    <button data-speed="4" aria-pressed="false">4×</button>
-    <button id="restart">Restart</button>
-    <button id="next">Next seed</button>
-    <button id="abort">Abort</button>
-    <button id="ship">Ship</button>
-    <button id="readiness">Readiness</button>
-  </div>
-  <script type="module" src="/src/main.ts"></script>
+  <div id="app"></div>
+  <script type="module" src="/src/ui/main.ts"></script>
 </body>
 </html>

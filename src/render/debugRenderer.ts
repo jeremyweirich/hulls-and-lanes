@@ -2,13 +2,9 @@
 // reads sim state. The camera follows the ship with forward up the screen and
 // about 40 u of lane visible ahead (spec section 12).
 
-import type { PartKind, Sim } from '../sim';
+import type { Rot, Sim } from '../sim';
+import { drawPart, KIND_COLOR } from './partStyle';
 
-const KIND_COLOR: Record<PartKind, string> = {
-  tile: '#3a4252', core: '#e0b84a', belt: '#7d8794', inserter: '#9aa7b8', collector: '#4fb3a5',
-  machine: '#8a6fd1', storage: '#6b7f99', tank: '#3f8fd9', pipe: '#2f6ea8', thruster: '#d9703f',
-  computer: '#5fd97a', turret: '#d94f5c', armor: '#59616f', generator: '#d9c23f', shield: '#4fd0e0',
-};
 const MATERIAL_COLOR = ['#8d939e', '#5b5148', '#9fc4d9'];
 const ITEM_COLOR: Record<string, string> = {
   raw: '#c9a36a', intermediate: '#d7dde8', supply: '#ffd84a',
@@ -178,10 +174,8 @@ export class DebugRenderer {
       if (!ship.partAlive[p]) continue;
       const def = ship.defs[p];
       const hp = ship.partHp[p] / def.hp;
-      ctx.fillStyle = KIND_COLOR[def.kind];
-      ctx.globalAlpha = 0.35 + 0.65 * hp;
-      ctx.fillRect(ship.partX[p] + 0.08, ship.partY[p] + 0.08, ship.partW[p] - 0.16, ship.partH[p] - 0.16);
-      ctx.globalAlpha = 1;
+      drawPart(ctx, def, ship.partX[p], ship.partY[p], ship.partW[p], ship.partH[p], (ship.partDir[p] * 90) as Rot,
+        0.35 + 0.65 * hp);
       if (hp < 1) {
         ctx.strokeStyle = '#ff5c5c';
         ctx.lineWidth = 0.08;
