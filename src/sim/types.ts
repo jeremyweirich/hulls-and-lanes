@@ -200,6 +200,19 @@ export interface Content {
   items: ItemDef[];
   recipes: RecipeDef[];
   turretRules: TurretRules;
+  economy: Economy;
+}
+
+export interface Economy {
+  /** Solo runs per readiness check. */
+  readinessRuns: number;
+  /** Seconds between idle runs. */
+  turnaroundSeconds: number;
+  offlineCapHours: number;
+  accrualIntervalSeconds: number;
+  start: { stockpile: Record<string, number>; hangarSlots: number };
+  hangarSlotsPerClear: number;
+  maxHangarSlots: number;
 }
 
 /** Player input. Assist tools will add command types here; solo runs have none. */
@@ -215,6 +228,8 @@ export type FailureCause =
 
 export interface SimEvent {
   tick: number;
+  /** Share of the lane covered when it happened, 0..1. */
+  laneShare: number;
   type: 'first_part_lost' | 'fuel_ran_dry' | 'part_lost' | 'parts_detached' | 'supply_ran_dry';
   /** Part type id, a count for parts_detached, or an item id for supply_ran_dry. */
   detail: string;

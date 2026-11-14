@@ -4,7 +4,7 @@ A mobile web game about designing automated factory-warships and sending them do
 
 ## Status
 
-Milestones 1 (Flight) and 3 (Factory and guns) of the build order are in place, sim side:
+Milestones 1 (Flight) and 3 (Factory and guns) of the build order are in place, sim side, along with the rules half of milestone 4 (The loop):
 
 - Deterministic sim core: fixed 30 Hz tick, seeded RNG streams, engine-independent trig, input queue and replay, state hashing (section 3).
 - Ship model: design format, placement rules, design hash, mass properties, damage, breakup (sections 4 and 5).
@@ -13,18 +13,19 @@ Milestones 1 (Flight) and 3 (Factory and guns) of the build order are in place, 
 - Combat: the autocannon, the damage multiplier table, targeting rules, chunk drops and boulder splitting (section 8).
 - Lane 1: slice-based asteroid spawning, impacts with damage spill and impulses, launch load, run end conditions, haul (section 9).
 - Headless runs, a balance harness, a determinism test, and a debug renderer.
+- Game loop rules in `src/game/`: readiness checks on each lane's 20 fixed seeds (in Web Workers in the browser), benchmark records and the plain-language report, certification, idle income and accrual, design costs, banking a run, farming assignment, and the versioned save record with an IndexedDB store (sections 10, 11 and 14).
 - Two ships in `src/data/designs/`: the starter, and a two-gun Tier 1 reference ship.
 
-Not built yet: the other four turrets and their projectiles, enemy ships, shields and power, the shipyard, readiness checks in workers, saves, and every screen other than the debug view.
+Not built yet: the other four turrets and their projectiles, enemy ships, shields and power, assist tools, contracts and unlocks, the shipyard, and every real screen. The debug page stands in for the run view and has a Readiness button; nothing is saved from it yet.
 
 ### Where the numbers stand
 
-On Lane 1's first 20 seeds, solo:
+From `npm run balance`, which runs Lane 1's readiness check (its 20 fixed seeds, solo):
 
-| Ship | Readiness | Slugs fired | Plate banked per clear |
+| Ship | Readiness | Plate banked per clear | Idle income if farmed |
 | --- | --- | --- | --- |
-| Starter Mk1 | 55% | about 130 | under 10 |
-| Tier 1 reference | 95% | 390–615 | about 50 |
+| Starter Mk1 | 70% | about 9 | not certified |
+| Tier 1 reference | 95% | about 46 | 649 plate per hour |
 
 The spec's targets are 30–50% for the starter, 85–95% for the reference ship, and about 60 plate per starter run. The starter's haul is far below its target; see the tuning notes below.
 
@@ -52,15 +53,20 @@ npm run determinism
 
 `npm run dev` serves the flight debug page: a ship flying Lane 1 on its own. Add `?design=reference1&seed=5&speed=4` to the URL to pick the ship and run.
 
-`npm run balance` takes a design name from `src/data/designs/` or a path to a design JSON file.
+`npm run balance` runs the lane's readiness check and prints the report. It takes a design name from `src/data/designs/` or a path to a design JSON file.
 
 `npm run determinism` runs fixed design, lane and seed triples under Node and in every browser engine Playwright can launch, and compares the final-state hashes with `tests/golden/determinism.json`. If a change to outcomes is intended, bump `SIM_VERSION` in `src/sim/types.ts` and rerun with `-- --update`.
+
+## Deployment
+
+Pushes to `main` run the tests, build, and deploy `dist/` to GitHub Pages through `.github/workflows/deploy.yml`. Pages must be enabled once in the repository settings, with the source set to GitHub Actions.
 
 ## Layout
 
 | Path | Holds |
 | --- | --- |
 | `src/sim/` | The simulation. Imports nothing from the browser, `render/` or `ui/`. |
+| `src/game/` | Hub-side rules over the save record. No DOM; only `readinessPool.ts` and `IndexedDbStore` need a browser. |
 | `src/data/` | Every tunable number: parts, asteroids, behaviors, lanes, constants, designs. |
 | `src/render/` | The debug renderer. Reads sim state, never writes it. |
 | `scripts/` | Balance harness and determinism runner. |
@@ -95,6 +101,8 @@ These keep runs identical across engines. Breaking one silently invalidates read
 - **Asteroid counts** per slice are the density's whole part plus a coin flip for the fraction.
 - **Collectors** reel items in at 8 u/s relative to the ship, and an item in range of two collectors goes to the first.
 - **Turrets** hold at most 20 rounds, the same limit inserters fill them to. Launch ammo beyond that goes to the core.
+- **Offline cap**: time away beyond 8 hours is dropped. Following the spec's accrual steps literally would pay the excess at the next accrual.
+- **Supply ran dry** is logged when none of that ammo is left anywhere on the ship, not when one turret is waiting on its inserter.
 - **Collision course**, for targeting, means the asteroid's current relative velocity carries it into the hull's bounding box within 10 s.
 
 ## Tuning notes

@@ -7,12 +7,13 @@ import type { Compiled, CompiledTurret } from './compiled';
 import { partWorld } from './logistics';
 import type { Loose } from './loose';
 import type { Rng } from './rng';
-import { addItem, type Ship } from './ship';
+import { addItem, shipItemCount, type Ship } from './ship';
 import type { Content, SimEvent } from './types';
 
 /** What the turret step reads and writes. The sim passes itself. */
 export interface CombatView {
   readonly tick: number;
+  readonly laneShare: number;
   readonly ship: Ship;
   readonly asteroids: Asteroids;
   readonly loose: Loose;
@@ -195,9 +196,10 @@ export function stepTurrets(view: CombatView): void {
 
     if (s.inv[p * s.nItems + t.ammo] <= 0) {
       s.turCooldown[p] = 0;
-      if (!view.dryLogged[t.ammo]) {
+      // Dry means none left anywhere on the ship, not a turret waiting on its inserter.
+      if (!view.dryLogged[t.ammo] && shipItemCount(s, t.ammo) === 0) {
         view.dryLogged[t.ammo] = 1;
-        view.events.push({ tick: view.tick, type: 'supply_ran_dry', detail: view.content.items[t.ammo].id });
+        view.events.push({ tick: view.tick, laneShare: view.laneShare, type: 'supply_ran_dry', detail: view.content.items[t.ammo].id });
       }
       continue;
     }

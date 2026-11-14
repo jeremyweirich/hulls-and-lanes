@@ -137,6 +137,12 @@ export class Sim implements FlightView, CombatView {
     return -coreWorldY(this.ship);
   }
 
+  /** Share of the lane's length the core has covered, 0..1. */
+  get laneShare(): number {
+    const share = this.distance / this.lane.length;
+    return share > 1 ? 1 : share > 0 ? share : 0;
+  }
+
   /** Speed down the lane, u/s. */
   get forwardSpeed(): number {
     return -this.ship.vy;
@@ -171,7 +177,7 @@ export class Sim implements FlightView, CombatView {
     resolveFuel(ship, dt);
     if (!this.fuelDryLogged && fuelBefore > 0 && totalFuel(ship) <= 0) {
       this.fuelDryLogged = true;
-      this.events.push({ tick: this.tick, type: 'fuel_ran_dry', detail: '' });
+      this.events.push({ tick: this.tick, laneShare: this.laneShare, type: 'fuel_ran_dry', detail: '' });
     }
 
     // 5. Integrate motion (semi-implicit Euler: velocity, then position).
@@ -243,7 +249,7 @@ export class Sim implements FlightView, CombatView {
       const detached = ship.lostCount - before;
       this.drainLost();
       if (detached > 0) {
-        this.events.push({ tick: this.tick, type: 'parts_detached', detail: String(detached) });
+        this.events.push({ tick: this.tick, laneShare: this.laneShare, type: 'parts_detached', detail: String(detached) });
       }
     } else if (this.tick % content.constants.cargoRecomputeTicks === 0) {
       recomputeMass(ship, content, true);
@@ -276,7 +282,7 @@ export class Sim implements FlightView, CombatView {
     for (let i = 0; i < ship.lostCount; i++) {
       const id = ship.defs[ship.lostQueue[i]].id;
       const first = !this.events.some((e) => e.type === 'first_part_lost');
-      this.events.push({ tick: this.tick, type: first ? 'first_part_lost' : 'part_lost', detail: id });
+      this.events.push({ tick: this.tick, laneShare: this.laneShare, type: first ? 'first_part_lost' : 'part_lost', detail: id });
     }
     ship.lostCount = 0;
   }
@@ -323,7 +329,6 @@ export class Sim implements FlightView, CombatView {
 
   result(): RunResult {
     if (this.outcome === 'running') throw new Error('The run has not ended.');
-    const share = this.distance / this.lane.length;
     const s = this.ship;
     const items = this.content.items;
     const haul: Record<string, number> = {};
@@ -344,7 +349,7 @@ export class Sim implements FlightView, CombatView {
       cause: this.cause,
       ticks: this.tick,
       seconds: this.tick * this.dt,
-      laneShare: share > 1 ? 1 : share > 0 ? share : 0,
+      laneShare: this.laneShare,
       partsLost: this.ship.partsLost,
       fuelLeft: totalFuel(this.ship),
       haul,

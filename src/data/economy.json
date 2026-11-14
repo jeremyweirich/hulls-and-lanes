@@ -1,0 +1,9 @@
+{
+  "readinessRuns": 20,
+  "turnaroundSeconds": 30,
+  "offlineCapHours": 8,
+  "accrualIntervalSeconds": 60,
+  "start": {"stockpile": {"iron_plate": 150}, "hangarSlots": 2},
+  "hangarSlotsPerClear": 1,
+  "maxHangarSlots": 7
+}

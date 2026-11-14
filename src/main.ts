@@ -2,6 +2,8 @@
 // the main thread at a fixed tick, and the renderer interpolating between ticks.
 
 import { content, designs, lanes } from './data';
+import { incomePerHour, isCertified, readiness, reportLines, type Benchmark } from './game';
+import { startReadinessCheck, type ReadinessHandle } from './game/readinessPool';
 import { DebugRenderer } from './render/debugRenderer';
 import { compile, coreWorldX, shipItemCount, Sim, totalFuel } from './sim';
 
@@ -10,7 +12,9 @@ const hud = document.getElementById('hud')!;
 const renderer = new DebugRenderer(canvas);
 const params = new URLSearchParams(location.search);
 
-const design = designs[params.get('design') ?? 'starter'] ?? designs.starter;
+const designNames = Object.keys(designs);
+let designName = params.get('design') && designs[params.get('design')!] ? params.get('design')! : 'starter';
+let design = designs[designName];
 const cc = compile(content);
 let seed = Number(params.get('seed') ?? 1) >>> 0;
 let speed = Number(params.get('speed') ?? 1);
@@ -74,7 +78,59 @@ document.getElementById('next')!.addEventListener('click', () => {
 document.getElementById('abort')!.addEventListener('click', () => sim.enqueue({ tick: sim.tick, type: 'abort' }));
 window.addEventListener('resize', () => renderer.resize());
 
+// Readiness check: 20 solo runs in workers, with the score filling in as they finish.
+const panel = document.getElementById('panel')!;
+let check: ReadinessHandle | null = null;
+let lastBenchmark: Benchmark | null = null;
+
+function showBenchmark(b: Benchmark, done: boolean): void {
+  lastBenchmark = b;
+  const lane = lanes.lane1;
+  const total = content.economy.readinessRuns;
+  const pct = Math.round(readiness(b) * 100);
+  const certified = isCertified(content, b, design, lane);
+  panel.textContent = '';
+  const head = document.createElement('div');
+  head.append(`${design.name} on ${lane.name}\nSolo readiness: `);
+  const score = document.createElement('b');
+  score.textContent = `${pct}%`;
+  if (pct < lane.readinessThreshold * 100) score.className = 'low';
+  head.append(score, done ? '' : `  (${b.runs} of ${total} runs)`);
+  panel.append(head);
+  if (!done) return;
+  const income = Object.entries(incomePerHour(content, b))
+    .map(([id, n]) => `${Math.round(n)} ${content.items.find((it) => it.id === id)?.name.toLowerCase() ?? id}`);
+  const lines = [
+    ...reportLines(content, b),
+    certified ? `Certified. Farming would bring in ${income.join(', ') || 'nothing'} per hour.`
+      : `Not certified: needs ${Math.round(lane.readinessThreshold * 100)}%.`,
+  ];
+  panel.append(lines.join('\n'));
+}
+
+function closePanel(): void {
+  check?.cancel();
+  check = null;
+  panel.classList.remove('open');
+}
+
+document.getElementById('readiness')!.addEventListener('click', () => {
+  if (panel.classList.contains('open')) {
+    closePanel();
+    return;
+  }
+  panel.classList.add('open');
+  panel.textContent = 'Starting readiness check…';
+  check = startReadinessCheck(content, design, lanes.lane1, showBenchmark);
+});
+document.getElementById('ship')!.addEventListener('click', () => {
+  closePanel();
+  designName = designNames[(designNames.indexOf(designName) + 1) % designNames.length];
+  design = designs[designName];
+  restart();
+});
+
 // Lets tests and the console poke at the run.
-Object.assign(window, { hl: { get sim() { return sim; }, step: (n: number) => { for (let i = 0; i < n; i++) sim.step(); } } });
+Object.assign(window, { hl: { get sim() { return sim; }, get benchmark() { return lastBenchmark; }, step: (n: number) => { for (let i = 0; i < n; i++) sim.step(); } } });
 
 requestAnimationFrame(frame);

@@ -298,7 +298,8 @@ describe('turrets', () => {
     sim.asteroids.add(ROCK, 0, sim.ship.x + 6, sim.ship.y - 6, 0, 0, 120);
     for (let i = 0; i < 120; i++) sim.step();
     expect(sim.fired[IT.slugs]).toBe(5);
-    expect(sim.events).toEqual([{ tick: expect.any(Number), type: 'supply_ran_dry', detail: 'slugs' }]);
+    expect(sim.events).toHaveLength(1);
+    expect(sim.events[0]).toMatchObject({ type: 'supply_ran_dry', detail: 'slugs' });
   });
 
   it('gives nothing for ramming', () => {
