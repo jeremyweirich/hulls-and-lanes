@@ -1,0 +1,7 @@
+[
+  {"id": "drive_forward", "name": "Drive forward", "tier": 1, "channels": ["forward"],
+   "params": {"cruise": {"min": 2, "max": 14, "default": 6}}},
+  {"id": "center_in_lane", "name": "Center in lane", "tier": 1, "channels": ["lateral"],
+   "params": {},
+   "tuning": {"triggerShare": 0.25, "maxSpeed": 2, "gain": 0.5}}
+]

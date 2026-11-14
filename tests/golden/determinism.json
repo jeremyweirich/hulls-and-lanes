@@ -1,0 +1,95 @@
+{
+  "simVersion": 1,
+  "cases": [
+    {
+      "id": "starter/lane1/1",
+      "outcome": "left_lane",
+      "ticks": 6350,
+      "stateHash": "a0103829107cc529"
+    },
+    {
+      "id": "starter/lane1/2",
+      "outcome": "success",
+      "ticks": 6380,
+      "stateHash": "7f1c7a16400188d8"
+    },
+    {
+      "id": "starter/lane1/3",
+      "outcome": "success",
+      "ticks": 6356,
+      "stateHash": "44ce715a0744c78b"
+    },
+    {
+      "id": "starter/lane1/6",
+      "outcome": "success",
+      "ticks": 6395,
+      "stateHash": "2803f7d1024dbca3"
+    },
+    {
+      "id": "starter/lane1/9",
+      "outcome": "success",
+      "ticks": 6379,
+      "stateHash": "ccd5644bc0a23c1a"
+    },
+    {
+      "id": "starter/lane1/1234567",
+      "outcome": "success",
+      "ticks": 6411,
+      "stateHash": "24a54c115569f5cc"
+    },
+    {
+      "id": "starter/lane1/4294967295",
+      "outcome": "success",
+      "ticks": 6403,
+      "stateHash": "ec64d419e606c6f5"
+    },
+    {
+      "id": "lopsided/lane1/1",
+      "outcome": "left_lane",
+      "ticks": 4046,
+      "stateHash": "1af10f373d1067f3"
+    },
+    {
+      "id": "lopsided/lane1/2",
+      "outcome": "success",
+      "ticks": 4365,
+      "stateHash": "dc26082b05043ea0"
+    },
+    {
+      "id": "lopsided/lane1/3",
+      "outcome": "success",
+      "ticks": 4351,
+      "stateHash": "310900c876ad2810"
+    },
+    {
+      "id": "lopsided/lane1/6",
+      "outcome": "left_lane",
+      "ticks": 3106,
+      "stateHash": "e9ee1c9f09a78cb6"
+    },
+    {
+      "id": "lopsided/lane1/9",
+      "outcome": "left_lane",
+      "ticks": 2916,
+      "stateHash": "6f296f93a1bed35d"
+    },
+    {
+      "id": "lopsided/lane1/1234567",
+      "outcome": "left_lane",
+      "ticks": 4031,
+      "stateHash": "02952f13953107e0"
+    },
+    {
+      "id": "lopsided/lane1/4294967295",
+      "outcome": "success",
+      "ticks": 4353,
+      "stateHash": "9e6d7961294799f0"
+    },
+    {
+      "id": "math",
+      "outcome": "",
+      "ticks": 0,
+      "stateHash": "d8507bc17451c3d6"
+    }
+  ]
+}

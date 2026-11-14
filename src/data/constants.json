@@ -1,0 +1,37 @@
+{
+  "tickRate": 30,
+  "linearDragPerSecond": 0.03,
+  "gyroTorque": 30,
+  "itemMass": 0.02,
+  "fuelMass": 0.02,
+  "cargoRecomputeTicks": 30,
+  "impactReferenceSpeed": 6,
+  "restitution": 0.2,
+  "autopilot": {
+    "conditionIntervalTicks": 6,
+    "minActiveTicks": 30,
+    "forceGain": 1.0,
+    "headingGain": 4,
+    "headingDamping": 4,
+    "torqueWeight": 2,
+    "gyroReluctance": 0.05,
+    "allocatorPasses": 8
+  },
+  "spawn": {
+    "sliceLength": 10,
+    "aheadDistance": 60,
+    "behindDistance": 30,
+    "maxLateralDrift": 1,
+    "maxApproachDrift": 2
+  },
+  "caps": {
+    "asteroids": 150,
+    "projectiles": 200,
+    "loose": 200,
+    "enemies": 6
+  },
+  "run": {
+    "outOfLaneSeconds": 10,
+    "timeLimitFactor": 3
+  }
+}
