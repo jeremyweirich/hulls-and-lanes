@@ -97,11 +97,11 @@ These keep runs identical across engines. Breaking one silently invalidates read
 - **Turrets** hold at most 20 rounds, the same limit inserters fill them to. Launch ammo beyond that goes to the core.
 - **Collision course**, for targeting, means the asteroid's current relative velocity carries it into the hull's bounding box within 10 s.
 
-## Tuning notes (provisional, need a decision)
+## Tuning notes
 
 Two data values depart from the spec because the factory loop did not close with the spec's numbers:
 
-- **Slugs per plate is 8, not 4.** A rock takes 10 slugs to kill and yields at most 16 at 4 per plate, so ammo only pays for itself if over 60% of chunks are collected. The gun reaches 14 u and a collector 6 u, so real collection is 30–50% and every ship ran dry. Raising collector range instead also works; it makes placement matter less.
-- **Lane 1 densities** are 12–20 pebbles and 4–7 rocks per 100 u, chosen so the reference ship lands in its 85–95% band.
+- **Slugs per plate is 8, not 4** (decided). A rock takes 10 slugs to kill and yields at most 16 at 4 per plate, so ammo only pays for itself if over 60% of chunks are collected. The gun reaches 14 u and a collector 6 u, so real collection is 30–50% and every ship ran dry. Raising collector range instead also works; it makes placement matter less.
+- **Lane 1 densities** (provisional) are 12–20 pebbles and 4–7 rocks per 100 u, chosen so the reference ship lands in its 85–95% band.
 
 The starter banks almost nothing: its single smelter feeds the fabricator first, and plate only overflows to the core when the gun is full. Hitting 60 plate per starter run needs either a richer lane or a different starter layout.
