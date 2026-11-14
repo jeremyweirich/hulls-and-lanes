@@ -50,7 +50,7 @@ describe('readiness check', () => {
     const run = (seed: number, events: RunResult['events'], ok = true): RunResult => ({
       simVersion: SIM_VERSION, laneId: 'lane1', seed, outcome: ok ? 'success' : 'failure',
       cause: ok ? null : 'left_lane', ticks: 3000, seconds: ok ? 100 : 60, laneShare: 1, partsLost: 0,
-      fuelLeft: 0, haul: ok ? { iron_plate: 10 } : {}, fired: {}, asteroidsShot: 0, chunksCollected: 0,
+      fuelLeft: 0, haul: ok ? { iron_plate: 10 } : {}, fired: {}, asteroidsShot: 0, chunksCollected: 0, assistUses: {},
       events, stateHash: '',
     });
     const dry = (laneShare: number) => ({ tick: 1, laneShare, type: 'supply_ran_dry' as const, detail: 'slugs' });

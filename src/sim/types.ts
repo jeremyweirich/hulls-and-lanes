@@ -141,6 +141,8 @@ export interface LaneDef {
   allowance: Record<string, number>;
   /** No asteroids spawn before this lane distance. */
   clearStart: number;
+  /** Assist tools offered on live runs of this lane. */
+  assist?: LaneAssist[];
   segments: LaneSegment[];
   encounters: unknown[];
   boss: unknown | null;
@@ -215,8 +217,17 @@ export interface Economy {
   maxHangarSlots: number;
 }
 
-/** Player input. Assist tools will add command types here; solo runs have none. */
-export type SimCommand = { tick: number; type: 'abort' };
+/** A tool a lane offers on assisted runs, with its numbers. */
+export interface LaneAssist {
+  tool: string;
+  cooldownSeconds: number;
+  [param: string]: number | string;
+}
+
+/** Player input, stamped with the tick it applies on. Solo runs have none. */
+export type SimCommand =
+  | { tick: number; type: 'abort' }
+  | { tick: number; type: 'assist'; tool: string; target: import('./assist').AssistTarget | null };
 
 export type Outcome = 'running' | 'success' | 'failure';
 
@@ -253,6 +264,8 @@ export interface RunResult {
   fired: Record<string, number>;
   asteroidsShot: number;
   chunksCollected: number;
+  /** Assist tool activations that took effect, by tool id. */
+  assistUses: Record<string, number>;
   events: SimEvent[];
   /** Hash of the final sim state. Must match across Node, Chromium and WebKit. */
   stateHash: string;

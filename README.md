@@ -14,20 +14,23 @@ Milestones 1 (Flight) and 3 (Factory and guns) of the build order are in place, 
 - Lane 1: slice-based asteroid spawning, impacts with damage spill and impulses, launch load, run end conditions, haul (section 9).
 - Headless runs, a balance harness, a determinism test, and a debug renderer.
 - Game loop rules in `src/game/`: readiness checks on each lane's 20 fixed seeds (in Web Workers in the browser), benchmark records and the plain-language report, certification, idle income and accrual, design costs, banking a run, farming assignment, and the versioned save record with an IndexedDB store (sections 10, 11 and 14).
+- Assist tools (section 13): Deck gun and Patch as sim commands, offered and sized per lane in lane data, replayable from the input log. The page takes taps: an asteroid for the Deck gun, a damaged part for Patch. A scripted assist bot lets the harness measure assisted runs.
 - Two ships in `src/data/designs/`: the starter, and a two-gun Tier 1 reference ship.
 
-Not built yet: the other four turrets and their projectiles, enemy ships, shields and power, assist tools, contracts and unlocks, the shipyard, and every real screen. The debug page stands in for the run view and has a Readiness button; nothing is saved from it yet.
+Not built yet: the other four turrets and their projectiles, enemy ships, shields and power, contracts and unlocks, the shipyard, and every real screen. The debug page stands in for the run view and has a Readiness button; nothing is saved from it yet.
 
 ### Where the numbers stand
 
-From `npm run balance`, which runs Lane 1's readiness check (its 20 fixed seeds, solo):
+From `npm run balance -- --assist`, on Lane 1's 20 fixed seeds:
 
-| Ship | Readiness | Plate banked per clear | Idle income if farmed |
-| --- | --- | --- | --- |
-| Starter Mk1 | 70% | about 9 | not certified |
-| Tier 1 reference | 95% | about 46 | 649 plate per hour |
+| Ship | Solo readiness | Assisted (bot) | Plate banked per clear | Idle income if farmed |
+| --- | --- | --- | --- | --- |
+| Starter Mk1 | 70% | 100% | about 9 | not certified |
+| Tier 1 reference | 95% | 100% | about 46 | 649 plate per hour |
 
-The spec's targets are 30–50% for the starter, 85–95% for the reference ship, and about 60 plate per starter run. The starter's haul is far below its target; see the tuning notes below.
+The bot taps about 15 times a minute, under the spec's limit of 20.
+
+Twenty seeds is a noisy sample. Over 80 seeds the starter clears 51% solo and the reference ship 91%, against spec targets of 30–50% and 85–95%. The starter's haul is far below its 60-plate target; see the tuning notes below.
 
 ## Commands
 
@@ -53,7 +56,7 @@ npm run determinism
 
 `npm run dev` serves the flight debug page: a ship flying Lane 1 on its own. Add `?design=reference1&seed=5&speed=4` to the URL to pick the ship and run.
 
-`npm run balance` runs the lane's readiness check and prints the report. It takes a design name from `src/data/designs/` or a path to a design JSON file.
+`npm run balance` runs the lane's readiness check and prints the report. Add `--assist` to fly the same seeds again with the assist bot. It takes a design name from `src/data/designs/` or a path to a design JSON file.
 
 `npm run determinism` runs fixed design, lane and seed triples under Node and in every browser engine Playwright can launch, and compares the final-state hashes with `tests/golden/determinism.json`. If a change to outcomes is intended, bump `SIM_VERSION` in `src/sim/types.ts` and rerun with `-- --update`.
 
@@ -101,6 +104,7 @@ These keep runs identical across engines. Breaking one silently invalidates read
 - **Asteroid counts** per slice are the density's whole part plus a coin flip for the fraction.
 - **Collectors** reel items in at 8 u/s relative to the ship, and an item in range of two collectors goes to the first.
 - **Turrets** hold at most 20 rounds, the same limit inserters fill them to. Launch ammo beyond that goes to the core.
+- **Assist taps** need no tool selected first: the tap goes to the first ready tool that can use what was tapped. The spec has the player tap a tool button, then a target.
 - **Offline cap**: time away beyond 8 hours is dropped. Following the spec's accrual steps literally would pay the excess at the next accrual.
 - **Supply ran dry** is logged when none of that ammo is left anywhere on the ship, not when one turret is waiting on its inserter.
 - **Collision course**, for targeting, means the asteroid's current relative velocity carries it into the hull's bounding box within 10 s.

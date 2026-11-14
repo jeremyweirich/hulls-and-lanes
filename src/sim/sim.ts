@@ -2,6 +2,7 @@
 // The same four inputs always produce the same run, in any engine. Nothing
 // here reads the clock, the DOM or Math.random.
 
+import { ASSIST_TOOLS, asteroidSlot, type AssistEffect, type AssistView } from './assist';
 import { Asteroids, Spawner } from './asteroids';
 import { Autopilot, type FlightView } from './autopilot';
 import { collideAsteroids } from './collide';
@@ -16,13 +17,13 @@ import {
   addItem, buildShip, coreWorldX, coreWorldY, loadFuel, placeGridPointAt, recomputeMass,
   resolveFuel, resolveStructure, totalFuel, updateRotation, type Ship,
 } from './ship';
-import { stepTurrets, type CombatView } from './turrets';
+import { shootDown, stepTurrets, type CombatView } from './turrets';
 import {
   SIM_VERSION, type Content, type Design, type FailureCause, type LaneDef,
   type Outcome, type RunResult, type SimCommand, type SimEvent,
 } from './types';
 
-export class Sim implements FlightView, CombatView {
+export class Sim implements FlightView, CombatView, AssistView {
   readonly content: Content;
   readonly lane: LaneDef;
   readonly seed: number;
@@ -37,6 +38,9 @@ export class Sim implements FlightView, CombatView {
   readonly dryLogged: Uint8Array;
   asteroidsShot = 0;
   chunksCollected = 0;
+  /** Per tool the lane offers: the tick it is ready again, and how often it took effect. */
+  readonly assistReady: Int32Array;
+  readonly assistUses: Int32Array;
   readonly dt: number;
 
   tick = 0;
@@ -74,6 +78,8 @@ export class Sim implements FlightView, CombatView {
     this.spreadRng = new Rng(seedFor(this.seed, STREAM_SPREAD));
     this.lootRng = new Rng(seedFor(this.seed, STREAM_LOOT));
     this.fired = new Int32Array(cc.nItems);
+    this.assistReady = new Int32Array(lane.assist?.length ?? 0);
+    this.assistUses = new Int32Array(lane.assist?.length ?? 0);
     this.dryLogged = new Uint8Array(cc.nItems);
 
     // Load: fuel is split across the tanks; ammo fills matching turrets evenly,
@@ -164,6 +170,7 @@ export class Sim implements FlightView, CombatView {
         this.end('failure', 'aborted');
         return;
       }
+      if (cmd.type === 'assist') this.assist(cmd.tool, cmd.target);
     }
 
     // 2. Spawn the lane slices entering range.
@@ -277,6 +284,48 @@ export class Sim implements FlightView, CombatView {
     if (this.tick >= this.timeLimitTicks) this.end('failure', 'time_limit');
   }
 
+  /**
+   * Runs an assist tool at this tick. Ignored if the lane does not offer the
+   * tool or it is still cooling down. The cooldown is spent only if the tool
+   * had an effect.
+   */
+  private assist(toolId: string, target: import('./assist').AssistTarget | null): void {
+    const offered = this.lane.assist;
+    if (!offered) return;
+    const i = offered.findIndex((a) => a.tool === toolId);
+    const tool = ASSIST_TOOLS[toolId];
+    if (i < 0 || !tool || this.tick < this.assistReady[i]) return;
+    const effects = tool.activate(this, target, offered[i] as unknown as Record<string, number>);
+    if (effects.length === 0) return;
+    for (const effect of effects) this.applyEffect(effect);
+    this.assistReady[i] = this.tick + Math.round(offered[i].cooldownSeconds * this.content.constants.tickRate);
+    this.assistUses[i]++;
+  }
+
+  private applyEffect(e: AssistEffect): void {
+    const s = this.ship;
+    switch (e.type) {
+      case 'damage_asteroid': {
+        const slot = asteroidSlot(this.asteroids, e.id);
+        if (slot < 0) return;
+        const cls = this.content.asteroidSizes[this.asteroids.size[slot]].targetClass;
+        this.asteroids.hp[slot] -= e.damage * this.content.turretRules.multipliers[e.damageType][cls];
+        if (this.asteroids.hp[slot] <= 0) shootDown(this, slot);
+        return;
+      }
+      case 'heal_part': {
+        const hp = s.partHp[e.part] + e.hp;
+        const max = s.defs[e.part].hp;
+        s.partHp[e.part] = hp > max ? max : hp;
+        return;
+      }
+      case 'impulse':
+        s.vx += e.x / s.mass;
+        s.vy += e.y / s.mass;
+        return;
+    }
+  }
+
   private drainLost(): void {
     const ship = this.ship;
     for (let i = 0; i < ship.lostCount; i++) {
@@ -317,6 +366,7 @@ export class Sim implements FlightView, CombatView {
     h.ints(s.inv, s.n * s.nItems).ints(s.beltItem, s.n).ints(s.partTimer, s.n);
     h.ints(s.partRecipe, s.n).ints(s.partProgress, s.n).nums(s.turCooldown, s.n);
     h.ints(s.turTargetId, s.n).int(s.repairTimer);
+    h.ints(this.assistReady, this.assistReady.length);
     h.int(this.spreadRng.state).int(this.lootRng.state).ints(this.fired, this.fired.length);
     h.int(l.high).int(l.live);
     for (let i = 0; i < l.high; i++) {
@@ -341,6 +391,10 @@ export class Sim implements FlightView, CombatView {
     }
     const fired: Record<string, number> = {};
     for (let i = 0; i < this.fired.length; i++) if (this.fired[i] > 0) fired[items[i].id] = this.fired[i];
+    const assistUses: Record<string, number> = {};
+    (this.lane.assist ?? []).forEach((a, i) => {
+      if (this.assistUses[i] > 0) assistUses[a.tool] = this.assistUses[i];
+    });
     return {
       simVersion: SIM_VERSION,
       laneId: this.lane.id,
@@ -356,6 +410,7 @@ export class Sim implements FlightView, CombatView {
       fired,
       asteroidsShot: this.asteroidsShot,
       chunksCollected: this.chunksCollected,
+      assistUses,
       events: this.events,
       stateHash: this.stateHash(),
     };

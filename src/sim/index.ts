@@ -12,3 +12,4 @@ export * from './compiled';
 export * from './loose';
 export * from './logistics';
 export * from './turrets';
+export * from './assist';

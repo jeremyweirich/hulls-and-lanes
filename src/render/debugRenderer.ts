@@ -18,7 +18,20 @@ const AHEAD = 40;
 /** Share of the view height above the ship. */
 const SHIP_AT = 0.74;
 
+/** A short-lived marker for an assist tap: a shot line to a point, or a ring on it. */
+export interface Mark {
+  kind: 'shot' | 'ring' | 'miss';
+  x: number;
+  y: number;
+  /** performance.now() time it disappears. */
+  until: number;
+}
+
 export class DebugRenderer {
+  private camX = 0;
+  private camY = 0;
+  private scale = 1;
+
   private readonly ctx: CanvasRenderingContext2D;
   private w = 0;
   private h = 0;
@@ -37,8 +50,13 @@ export class DebugRenderer {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  /** Converts a point in CSS pixels to lane space, using the last frame's camera. */
+  toWorld(px: number, py: number): [number, number] {
+    return [this.camX + (px - this.w / 2) / this.scale, this.camY + (py - this.h * SHIP_AT) / this.scale];
+  }
+
   /** alpha in [0,1] blends from the previous tick's positions to the current ones. */
-  draw(sim: Sim, alpha: number): void {
+  draw(sim: Sim, alpha: number, marks: Mark[] = []): void {
     const { ctx, w, h } = this;
     const ship = sim.ship;
     const lerp = (a: number, b: number) => a + (b - a) * alpha;
@@ -52,6 +70,9 @@ export class DebugRenderer {
 
     const scale = (h * SHIP_AT) / (AHEAD + 4);
     const camX = Math.max(-sim.lane.width / 2, Math.min(sim.lane.width / 2, sx));
+    this.camX = camX;
+    this.camY = sy;
+    this.scale = scale;
     const toX = (x: number) => w / 2 + (x - camX) * scale;
     const toY = (y: number) => h * SHIP_AT + (y - sy) * scale;
 
@@ -218,6 +239,24 @@ export class DebugRenderer {
     ctx.lineTo(ship.comX, ship.comY + 0.5);
     ctx.stroke();
     ctx.restore();
+
+    // Assist taps.
+    for (const m of marks) {
+      const x = toX(m.x);
+      const y = toY(m.y);
+      ctx.lineWidth = 2;
+      if (m.kind === 'shot') {
+        ctx.strokeStyle = '#ffd84a';
+        ctx.beginPath();
+        ctx.moveTo(toX(sx), toY(sy));
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = m.kind === 'ring' ? '#7dffa0' : m.kind === 'miss' ? '#566178' : '#ffd84a';
+      ctx.beginPath();
+      ctx.arc(x, y, m.kind === 'miss' ? 8 : 14, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     if (sim.outcome !== 'running') {
       const good = sim.outcome === 'success';

@@ -16,7 +16,12 @@
       padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: #0b0e14cc; }
     button { flex: 1 1 auto; min-width: 52px; min-height: 44px; border: 1px solid #2c3546; border-radius: 8px;
       background: #161c28; color: inherit; font: inherit; }
-    #panel { position: fixed; left: 10px; right: 10px; bottom: 128px; padding: 12px 14px; border-radius: 10px;
+    #assist { position: fixed; left: 10px; right: 10px; bottom: 124px; display: flex; gap: 6px; pointer-events: none; }
+    .chip { flex: 1; position: relative; overflow: hidden; padding: 7px 10px; border-radius: 8px;
+      border: 1px solid #2c3546; background: #121826d9; color: #8894a8; }
+    .chip.ready { color: #ffd84a; border-color: #6b5a1a; }
+    .chip i { position: absolute; left: 0; bottom: 0; height: 3px; background: #ffd84a; }
+    #panel { position: fixed; left: 10px; right: 10px; bottom: 168px; padding: 12px 14px; border-radius: 10px;
       background: #121826f2; border: 1px solid #2c3546; white-space: pre-wrap; display: none; }
     #panel.open { display: block; }
     #panel b { color: #7dffa0; font-weight: 600; }
@@ -28,6 +33,7 @@
 <body>
   <canvas id="view"></canvas>
   <div id="hud"></div>
+  <div id="assist"></div>
   <div id="panel" role="status" aria-live="polite"></div>
   <div id="bar">
     <button id="pause" aria-pressed="false">Pause</button>

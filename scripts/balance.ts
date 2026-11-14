@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'node:fs';
 import { content, designs, lanes } from '../src/data';
-import { incomePerHour, laneSeeds, readiness, reportLines, summarize } from '../src/game';
+import { incomePerHour, laneSeeds, readiness, reportLines, runAssisted, summarize } from '../src/game';
 import { runHeadless, type Design, type RunResult } from '../src/sim';
 
 const args = process.argv.slice(2);
@@ -44,6 +44,21 @@ for (const seed of seeds) {
   );
 }
 const ms = performance.now() - t0;
+
+// The same seeds again with the assist bot, for the numbers section 13 asks for.
+if (args.includes('--assist')) {
+  let wins = 0;
+  let taps = 0;
+  let minutes = 0;
+  for (const seed of seeds) {
+    const r = runAssisted(content, design, lane, seed);
+    if (r.outcome === 'success') wins++;
+    taps += Object.values(r.assistUses).reduce((a, n) => a + n, 0);
+    minutes += r.seconds / 60;
+  }
+  console.log(`\nAssisted (bot): ${wins}/${count} (${((100 * wins) / count).toFixed(0)}%), `
+    + `${(taps / minutes).toFixed(1)} taps per minute`);
+}
 console.log(`\n${design.name} on ${lane.name}: readiness ${successes}/${count}`
   + ` (${((100 * successes) / count).toFixed(0)}%)`);
 const b = summarize(lane, design, results);

@@ -4,8 +4,9 @@
 import { content, designs, lanes } from './data';
 import { incomePerHour, isCertified, readiness, reportLines, type Benchmark } from './game';
 import { startReadinessCheck, type ReadinessHandle } from './game/readinessPool';
-import { DebugRenderer } from './render/debugRenderer';
-import { compile, coreWorldX, shipItemCount, Sim, totalFuel } from './sim';
+import { DebugRenderer, type Mark } from './render/debugRenderer';
+import { ASSIST_TOOLS, compile, coreWorldX, shipItemCount, Sim, totalFuel } from './sim';
+import type { AssistTarget } from './sim';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud')!;
@@ -39,7 +40,9 @@ function frame(now: number): void {
       acc -= tickSeconds;
     }
   }
-  renderer.draw(sim, sim.outcome === 'running' && !paused ? acc / tickSeconds : 1);
+  while (marks.length && marks[0].until < now) marks.shift();
+  renderer.draw(sim, sim.outcome === 'running' && !paused ? acc / tickSeconds : 1, marks);
+  updateChips();
 
   const s = sim.ship;
   const slot = sim.autopilot.activeSlot();
@@ -50,7 +53,7 @@ function frame(now: number): void {
     `lane ${Math.max(0, (100 * sim.distance) / sim.lane.length).toFixed(0)}%   speed ${sim.forwardSpeed.toFixed(2)} u/s   x ${coreWorldX(s).toFixed(1)}`,
     `fuel ${totalFuel(s).toFixed(0)}   mass ${s.mass.toFixed(0)}   parts lost ${s.partsLost}   rocks ${sim.asteroids.live}`,
     `slugs ${shipItemCount(s, cc.itemIndex.slugs)}   fired ${sim.fired[cc.itemIndex.slugs]}   shot ${sim.asteroidsShot}`,
-    `chunks ${sim.chunksCollected}   plate ${shipItemCount(s, cc.itemIndex.iron_plate)}`,
+    `chunks ${sim.chunksCollected}   plate ${shipItemCount(s, cc.itemIndex.iron_plate)}   taps ${taps()}`,
     `behavior: ${slot >= 0 ? sim.autopilot.slots[slot].def.name : 'none'}`,
     ...lostEvents,
     sim.outcome !== 'running' ? `state ${sim.stateHash()}` : '',
@@ -77,6 +80,96 @@ document.getElementById('next')!.addEventListener('click', () => {
 });
 document.getElementById('abort')!.addEventListener('click', () => sim.enqueue({ tick: sim.tick, type: 'abort' }));
 window.addEventListener('resize', () => renderer.resize());
+
+// Assist tools. A tap in the view goes to the first ready tool that can use
+// what was tapped: a damaged part for Patch, an asteroid for the Deck gun.
+// The command is stamped with the next tick, so the run replays exactly.
+const marks: Mark[] = [];
+const assistBar = document.getElementById('assist')!;
+const tools = lanes.lane1.assist ?? [];
+const chips = tools.map((a) => {
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  const label = document.createElement('span');
+  const bar = document.createElement('i');
+  chip.append(label, bar);
+  assistBar.append(chip);
+  return { chip, label, bar, name: ASSIST_TOOLS[a.tool].name };
+});
+
+function taps(): number {
+  let n = 0;
+  for (let i = 0; i < sim.assistUses.length; i++) n += sim.assistUses[i];
+  return n;
+}
+
+function updateChips(): void {
+  tools.forEach((a, i) => {
+    const left = Math.max(0, sim.assistReady[i] - sim.tick) / 30;
+    chips[i].chip.classList.toggle('ready', left === 0);
+    chips[i].label.textContent = left === 0 ? `${chips[i].name}: tap` : `${chips[i].name} ${left.toFixed(1)}s`;
+    chips[i].bar.style.width = `${100 * (1 - left / a.cooldownSeconds)}%`;
+  });
+}
+
+/** What a tap at a lane-space point means for a tool, or null. */
+function resolveTarget(targeting: string, wx: number, wy: number): AssistTarget | null {
+  const s = sim.ship;
+  if (targeting === 'part') {
+    // Into grid space, then the nearest damaged part within a cell and a half.
+    const dx = wx - s.x;
+    const dy = wy - s.y;
+    const gx = s.comX + s.cos * dx + s.sin * dy;
+    const gy = s.comY - s.sin * dx + s.cos * dy;
+    let best = -1;
+    let bestD = 1.5;
+    for (let p = 0; p < s.n; p++) {
+      if (!s.partAlive[p] || s.partHp[p] >= s.defs[p].hp) continue;
+      const ex = Math.max(s.partX[p] - gx, 0, gx - s.partX[p] - s.partW[p]);
+      const ey = Math.max(s.partY[p] - gy, 0, gy - s.partY[p] - s.partH[p]);
+      const d = Math.hypot(ex, ey);
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    }
+    return best < 0 ? null : { kind: 'part', part: best };
+  }
+  if (targeting === 'asteroid') {
+    // The nearest asteroid whose edge is within a thumb's width of the tap.
+    const a = sim.asteroids;
+    let best = -1;
+    let bestD = 2;
+    for (let i = 0; i < a.high; i++) {
+      if (!a.alive[i]) continue;
+      const d = Math.hypot(a.x[i] - wx, a.y[i] - wy) - sim.content.asteroidSizes[a.size[i]].radius;
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    return best < 0 ? null : { kind: 'asteroid', id: a.id[best] };
+  }
+  return null;
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (sim.outcome !== 'running') return;
+  const [wx, wy] = renderer.toWorld(e.clientX, e.clientY);
+  const until = performance.now() + 220;
+  for (let i = 0; i < tools.length; i++) {
+    const tool = ASSIST_TOOLS[tools[i].tool];
+    const target = resolveTarget(tool.targeting, wx, wy);
+    if (!target) continue;
+    if (sim.tick < sim.assistReady[i]) {
+      marks.push({ kind: 'miss', x: wx, y: wy, until });
+      return;
+    }
+    sim.enqueue({ tick: sim.tick, type: 'assist', tool: tool.id, target });
+    marks.push({ kind: target.kind === 'part' ? 'ring' : 'shot', x: wx, y: wy, until });
+    return;
+  }
+});
 
 // Readiness check: 20 solo runs in workers, with the score filling in as they finish.
 const panel = document.getElementById('panel')!;

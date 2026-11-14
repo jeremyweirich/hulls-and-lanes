@@ -36,7 +36,7 @@ const pos = new Float64Array(2);
  * -1 if it will miss. The hull is the grid's bounding box grown by the
  * asteroid's radius; the ship's spin is ignored.
  */
-function timeToImpact(s: Ship, a: Asteroids, i: number, radius: number, horizon: number): number {
+export function timeToImpact(s: Ship, a: Asteroids, i: number, radius: number, horizon: number): number {
   const dx = a.x[i] - s.x;
   const dy = a.y[i] - s.y;
   const gx = s.comX + s.cos * dx + s.sin * dy;
