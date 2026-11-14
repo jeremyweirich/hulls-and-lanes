@@ -4,14 +4,18 @@
 
 import { content, designs, lanes } from '../data';
 import {
-  accrueAll, isCurrent, newGame, storeBenchmark,
+  accrueAll, importSave, isCurrent, newGame, recordRun, storeBenchmark,
   type AccrualLine, type Benchmark, type SaveRecord, type SaveStore, type ShipRecord,
 } from '../game';
 import { startReadinessCheck, type ReadinessHandle } from '../game/readinessPool';
-import { designHash, type Design, type LaneDef } from '../sim';
+import { designHash, type Design, type LaneDef, type RunResult } from '../sim';
 import type { Screen } from './dom';
-import { toast } from './dom';
+import { h, sheet, toast } from './dom';
+import { duration, money } from './format';
 import { HubScreen } from './hub';
+import { LaunchScreen } from './launch';
+import { ReportScreen } from './report';
+import { RunScreen, type RunMode } from './run';
 import { ShipyardScreen } from './shipyard';
 
 export interface Check {
@@ -74,12 +78,95 @@ export class App {
     this.show(new ShipyardScreen(this, shipId));
   }
 
-  /** Launch setup is not built yet. */
-  readonly canLaunch = false;
-
   toLaunch(shipId: string): void {
-    toast('Launch setup is next on the list.');
-    void shipId;
+    this.show(new LaunchScreen(this, shipId));
+  }
+
+  toRun(shipId: string, mode: RunMode): void {
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+    this.show(new RunScreen(this, shipId, mode, seed));
+  }
+
+  toReport(shipId: string, laneId: string, result: RunResult, mode: RunMode, firstClear: boolean): void {
+    this.show(new ReportScreen(this, shipId, laneId, result, mode, firstClear));
+  }
+
+  /**
+   * Banks a finished assisted run, then starts the readiness check that follows
+   * every assisted run (spec section 10) unless the design already has a
+   * current benchmark. Returns whether this run cleared the lane for the first time.
+   */
+  recordRun(shipId: string, laneId: string, result: RunResult): boolean {
+    const firstClear = recordRun(content, this.save, this.lane(laneId), result);
+    void this.persist();
+    const ship = this.ship(shipId);
+    if (ship && !isCurrent(ship.benchmarks[laneId], ship.design)) this.startCheck(shipId, laneId);
+    return firstClear;
+  }
+
+  /** Adds a ship to the hangar and saves. Returns its id. */
+  addShip(design: Design): string {
+    let n = 1;
+    while (this.save.ships.some((s) => s.id === `s${n}`)) n++;
+    const id = `s${n}`;
+    this.save.ships.push({ id, design, salvagedParts: [], benchmarks: {}, farming: null });
+    void this.persist();
+    return id;
+  }
+
+  /** Replaces the whole save with an imported one. */
+  async replaceSave(text: string): Promise<void> {
+    const save = importSave(text);
+    for (const c of this.checks.values()) c.handle.cancel();
+    this.checks.clear();
+    this.save = save;
+    await this.persist();
+    this.toHub();
+  }
+
+  async reset(): Promise<void> {
+    for (const c of this.checks.values()) c.handle.cancel();
+    this.checks.clear();
+    this.save = newGame(content, designs.starter, (Math.random() * 2 ** 32) >>> 0);
+    await this.persist();
+    this.toHub();
+  }
+
+  /**
+   * Accrues idle income now and once a minute while the app is open (spec
+   * section 10), and shows what came in while the player was away.
+   */
+  startAccrual(): void {
+    const lastSeen = typeof this.save.settings.lastSeen === 'number' ? this.save.settings.lastSeen : null;
+    const lines = this.accrue();
+    if (lines.length) this.showAway(lines, lastSeen);
+    const every = content.economy.accrualIntervalSeconds * 1000;
+    window.setInterval(() => {
+      const got = this.accrue();
+      const total: Record<string, number> = {};
+      for (const l of got) for (const [id, n] of Object.entries(l.haul)) total[id] = (total[id] ?? 0) + n;
+      if (money(total)) toast(`Farming brought in ${money(total)}.`);
+    }, every);
+    // Catch up as soon as the player comes back to the tab.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      const seen = typeof this.save.settings.lastSeen === 'number' ? this.save.settings.lastSeen : null;
+      const got = this.accrue();
+      if (got.length) this.showAway(got, seen);
+    });
+  }
+
+  private showAway(lines: AccrualLine[], lastSeen: number | null): void {
+    const away = lastSeen ? App.now() - lastSeen : null;
+    const total: Record<string, number> = {};
+    for (const l of lines) for (const [id, n] of Object.entries(l.haul)) total[id] = (total[id] ?? 0) + n;
+    sheet('While you were away', h('div', null,
+      away !== null ? h('p', { class: 'muted' }, `Away for ${duration(away)}${away > content.economy.offlineCapHours * 3600 ? ` (farming pays for the first ${content.economy.offlineCapHours} h)` : ''}.`) : null,
+      lines.map((l) => h('div', { class: 'card' },
+        h('div', { class: 'head' }, h('h2', null, l.name), h('b', null, money(l.haul) || 'nothing')),
+        h('div', { class: 'sub' }, `${l.runs} runs of ${this.lane(l.laneId).name}, ${l.successes} cleared`))),
+      h('p', null, h('b', null, `Total: ${money(total) || 'nothing'}`), ' added to the stockpile.'),
+    ));
   }
 
   get current(): Screen | null {
@@ -117,6 +204,7 @@ export class App {
   /** Pays farming ships for runs finished since last time. */
   accrue(): AccrualLine[] {
     const lines = accrueAll(content, this.save, App.now());
+    this.save.settings.lastSeen = App.now();
     // Accrual advances each farming ship's clock even with no payout, so always save.
     void this.persist();
     if (lines.length) this.notify();

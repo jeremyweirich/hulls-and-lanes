@@ -19,7 +19,9 @@ Milestones 1 (Flight) and 3 (Factory and guns) of the build order are in place, 
 
 - The shipyard (milestone 2, section 12): design grid, part palette, place, path, rotate, move and erase, symmetry, undo and redo, and live readouts, saved to IndexedDB as you edit. The editing rules are `DesignEditor` in `src/game/editor.ts`; the readouts are `shipStats` in `src/game/readouts.ts`.
 
-Not built yet: the other four turrets and their projectiles, enemy ships, shields and power, contracts and unlocks, and the rest of the loop's screens. The debug page (`debug.html`) stands in for the run view and has a Readiness button; nothing is saved from it.
+- The rest of the Tier 1 loop's screens (milestone 4): hub, launch setup, run view, run report, saved with `IndexedDbStore`. A run is banked when it ends and followed by a readiness check in workers, which the report fills in. Idle income accrues on open, every minute, and when the tab comes back, with a "while you were away" summary. Settings export, import and reset the save.
+
+Not built yet: the map screen, contracts, unlocks on lane clear, blueprints, the item-flow overlay, part-state icons in the run view, the other four turrets and their projectiles, enemy ships, shields and power. The debug page (`debug.html`) still runs any stock design down Lane 1.
 
 ### Where the numbers stand
 
@@ -107,6 +109,8 @@ These keep runs identical across engines. Breaking one silently invalidates read
 - **Rotation** of the part to place: tap the selected palette chip again. Thrusters start facing back.
 - **Move**: long-press a part with any tool but Erase, then drag. It keeps its place in the part order.
 - **Symmetry** mirrors across the core's centre line. A 3-wide core puts that line through a cell, so a mirrored ship has an odd width: 7 at most on Lane 1.
+- **Assist taps**: by default a tap goes to the first ready tool that can use it. Settings has "Choose an assist tool before tapping a target" for the spec's tool-then-target flow, so both can be tried.
+- **Live runs** use a random seed each time. A "Watch" run of a farming ship banks nothing.
 - **Rotate** keeps a part's top-left corner when the turned part fits there, otherwise tries turning it about its centre.
 
 ## Choices made where the spec was silent or needed adjusting

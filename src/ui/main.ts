@@ -10,6 +10,7 @@ async function main(): Promise<void> {
   // Some mobile browsers clear storage for sites that go unused (spec section 14).
   void navigator.storage?.persist?.();
   app.toHub();
+  app.startAccrual();
   Object.assign(window, { hl: app });
 }
 

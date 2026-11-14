@@ -110,7 +110,7 @@ export class ShipyardScreen implements Screen {
         h('button', { class: 'btn back', on: { click: () => this.leave() } }, '‹ Hub'),
         this.title,
         this.testBtn,
-        app.canLaunch ? h('button', { class: 'btn primary', on: { click: () => this.launch() } }, 'Launch') : null,
+        h('button', { class: 'btn primary', on: { click: () => this.launch() } }, 'Launch'),
       ),
       this.readout,
       h('div', { class: 'yard-main' }, this.canvas, this.hint),

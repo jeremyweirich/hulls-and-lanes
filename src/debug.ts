@@ -6,7 +6,7 @@ import { incomePerHour, isCertified, readiness, reportLines, type Benchmark } fr
 import { startReadinessCheck, type ReadinessHandle } from './game/readinessPool';
 import { DebugRenderer, type Mark } from './render/debugRenderer';
 import { ASSIST_TOOLS, compile, coreWorldX, shipItemCount, Sim, totalFuel } from './sim';
-import type { AssistTarget } from './sim';
+import { resolveTarget } from './ui/targets';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud')!;
@@ -112,54 +112,13 @@ function updateChips(): void {
   });
 }
 
-/** What a tap at a lane-space point means for a tool, or null. */
-function resolveTarget(targeting: string, wx: number, wy: number): AssistTarget | null {
-  const s = sim.ship;
-  if (targeting === 'part') {
-    // Into grid space, then the nearest damaged part within a cell and a half.
-    const dx = wx - s.x;
-    const dy = wy - s.y;
-    const gx = s.comX + s.cos * dx + s.sin * dy;
-    const gy = s.comY - s.sin * dx + s.cos * dy;
-    let best = -1;
-    let bestD = 1.5;
-    for (let p = 0; p < s.n; p++) {
-      if (!s.partAlive[p] || s.partHp[p] >= s.defs[p].hp) continue;
-      const ex = Math.max(s.partX[p] - gx, 0, gx - s.partX[p] - s.partW[p]);
-      const ey = Math.max(s.partY[p] - gy, 0, gy - s.partY[p] - s.partH[p]);
-      const d = Math.hypot(ex, ey);
-      if (d < bestD) {
-        bestD = d;
-        best = p;
-      }
-    }
-    return best < 0 ? null : { kind: 'part', part: best };
-  }
-  if (targeting === 'asteroid') {
-    // The nearest asteroid whose edge is within a thumb's width of the tap.
-    const a = sim.asteroids;
-    let best = -1;
-    let bestD = 2;
-    for (let i = 0; i < a.high; i++) {
-      if (!a.alive[i]) continue;
-      const d = Math.hypot(a.x[i] - wx, a.y[i] - wy) - sim.content.asteroidSizes[a.size[i]].radius;
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
-    }
-    return best < 0 ? null : { kind: 'asteroid', id: a.id[best] };
-  }
-  return null;
-}
-
 canvas.addEventListener('pointerdown', (e) => {
   if (sim.outcome !== 'running') return;
   const [wx, wy] = renderer.toWorld(e.clientX, e.clientY);
   const until = performance.now() + 220;
   for (let i = 0; i < tools.length; i++) {
     const tool = ASSIST_TOOLS[tools[i].tool];
-    const target = resolveTarget(tool.targeting, wx, wy);
+    const target = resolveTarget(sim, tool.targeting, wx, wy);
     if (!target) continue;
     if (sim.tick < sim.assistReady[i]) {
       marks.push({ kind: 'miss', x: wx, y: wy, until });
