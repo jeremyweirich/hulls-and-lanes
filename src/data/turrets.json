@@ -1,0 +1,15 @@
+{
+  "targetingIntervalTicks": 6,
+  "minMultiplier": 0.3,
+  "threatHorizonSeconds": 10,
+  "multipliers": {
+    "kinetic": {"small_rock": 1.0, "boulder": 0.5, "monolith": 0.1, "hull": 1.0, "armor": 0.3, "shield": 0.5},
+    "explosive": {"small_rock": 1.0, "boulder": 1.5, "monolith": 0.3, "hull": 1.0, "armor": 0.5, "shield": 0.5},
+    "piercing": {"small_rock": 0.5, "boulder": 1.0, "monolith": 2.0, "hull": 1.0, "armor": 2.0, "shield": 0.5},
+    "energy": {"small_rock": 1.5, "boulder": 0.3, "monolith": 0.1, "hull": 0.75, "armor": 0.25, "shield": 2.0}
+  },
+  "turrets": [
+    {"part": "autocannon", "damageType": "kinetic", "range": 14, "damage": 12, "shotsPerSecond": 4,
+     "ammo": "slugs", "ammoCapacity": 20, "delivery": "hitscan_spread", "spreadFactor": 0.035}
+  ]
+}

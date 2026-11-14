@@ -8,3 +8,7 @@ export { collideAsteroids } from './collide';
 export { Rng, seedFor, mix32, STREAM_SPAWN, STREAM_SPREAD, STREAM_LOOT } from './rng';
 export { dsin, dcos, datan2, wrapAngle, PI, TWO_PI, HALF_PI } from './dmath';
 export { Hasher, canonicalJson } from './hash';
+export * from './compiled';
+export * from './loose';
+export * from './logistics';
+export * from './turrets';

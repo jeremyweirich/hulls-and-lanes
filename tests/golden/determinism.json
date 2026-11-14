@@ -1,89 +1,131 @@
 {
-  "simVersion": 1,
+  "simVersion": 2,
   "cases": [
     {
       "id": "starter/lane1/1",
       "outcome": "left_lane",
-      "ticks": 6350,
-      "stateHash": "a0103829107cc529"
+      "ticks": 5756,
+      "stateHash": "623a0f6a3f1086ff"
     },
     {
       "id": "starter/lane1/2",
       "outcome": "success",
-      "ticks": 6380,
-      "stateHash": "7f1c7a16400188d8"
+      "ticks": 6456,
+      "stateHash": "ad636331cd7629e4"
     },
     {
       "id": "starter/lane1/3",
-      "outcome": "success",
-      "ticks": 6356,
-      "stateHash": "44ce715a0744c78b"
+      "outcome": "left_lane",
+      "ticks": 6050,
+      "stateHash": "a1aab0de0062dc5b"
     },
     {
       "id": "starter/lane1/6",
       "outcome": "success",
-      "ticks": 6395,
-      "stateHash": "2803f7d1024dbca3"
+      "ticks": 6586,
+      "stateHash": "3ea3c81450253181"
     },
     {
       "id": "starter/lane1/9",
       "outcome": "success",
-      "ticks": 6379,
-      "stateHash": "ccd5644bc0a23c1a"
+      "ticks": 6528,
+      "stateHash": "0447cd35c6c1a673"
     },
     {
       "id": "starter/lane1/1234567",
-      "outcome": "success",
-      "ticks": 6411,
-      "stateHash": "24a54c115569f5cc"
+      "outcome": "left_lane",
+      "ticks": 6319,
+      "stateHash": "75c6ce03015ae829"
     },
     {
       "id": "starter/lane1/4294967295",
       "outcome": "success",
-      "ticks": 6403,
-      "stateHash": "ec64d419e606c6f5"
+      "ticks": 6531,
+      "stateHash": "663e7def17abf492"
+    },
+    {
+      "id": "reference1/lane1/1",
+      "outcome": "success",
+      "ticks": 6512,
+      "stateHash": "3890018103c7cb7f"
+    },
+    {
+      "id": "reference1/lane1/2",
+      "outcome": "success",
+      "ticks": 6485,
+      "stateHash": "df3558e3088ea023"
+    },
+    {
+      "id": "reference1/lane1/3",
+      "outcome": "left_lane",
+      "ticks": 6114,
+      "stateHash": "4179deb67122467b"
+    },
+    {
+      "id": "reference1/lane1/6",
+      "outcome": "success",
+      "ticks": 6476,
+      "stateHash": "149387b945f5d84c"
+    },
+    {
+      "id": "reference1/lane1/9",
+      "outcome": "success",
+      "ticks": 6476,
+      "stateHash": "19de993daccc99cb"
+    },
+    {
+      "id": "reference1/lane1/1234567",
+      "outcome": "success",
+      "ticks": 6515,
+      "stateHash": "c2e9656277929c8b"
+    },
+    {
+      "id": "reference1/lane1/4294967295",
+      "outcome": "success",
+      "ticks": 6514,
+      "stateHash": "fa80d051079a8dd3"
     },
     {
       "id": "lopsided/lane1/1",
       "outcome": "left_lane",
-      "ticks": 4046,
-      "stateHash": "1af10f373d1067f3"
+      "ticks": 3191,
+      "stateHash": "5f2106a2c79a9117"
     },
     {
       "id": "lopsided/lane1/2",
-      "outcome": "success",
-      "ticks": 4365,
-      "stateHash": "dc26082b05043ea0"
+      "outcome": "left_lane",
+      "ticks": 2340,
+      "stateHash": "1cb8b32f22f66fbe"
     },
     {
       "id": "lopsided/lane1/3",
-      "outcome": "success",
-      "ticks": 4351,
-      "stateHash": "310900c876ad2810"
+      "outcome": "left_lane",
+      "ticks": 1451,
+      "stateHash": "57ad129d98df958f"
     },
     {
       "id": "lopsided/lane1/6",
       "outcome": "left_lane",
-      "ticks": 3106,
-      "stateHash": "e9ee1c9f09a78cb6"
+      "ticks": 5882,
+      "stateHash": "8b028b298c629b41"
     },
     {
       "id": "lopsided/lane1/9",
       "outcome": "left_lane",
-      "ticks": 2916,
-      "stateHash": "6f296f93a1bed35d"
+      "ticks": 3087,
+      "stateHash": "b1244af8b05fca59"
     },
     {
       "id": "lopsided/lane1/1234567",
       "outcome": "left_lane",
-      "ticks": 4031,
-      "stateHash": "02952f13953107e0"
+      "ticks": 1665,
+      "stateHash": "e0a27b0bfd99953d"
     },
     {
       "id": "lopsided/lane1/4294967295",
-      "outcome": "success",
-      "ticks": 4353,
-      "stateHash": "9e6d7961294799f0"
+      "outcome": "left_lane",
+      "ticks": 1397,
+      "stateHash": "c613c7f5537ef153"
     },
     {
       "id": "math",

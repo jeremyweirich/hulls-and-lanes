@@ -1,0 +1,18 @@
+[
+  {"id": "metal_chunk", "name": "Metal chunk", "group": "raw"},
+  {"id": "carbon_chunk", "name": "Carbon chunk", "group": "raw"},
+  {"id": "ice_chunk", "name": "Ice chunk", "group": "raw"},
+  {"id": "scrap", "name": "Scrap", "group": "raw", "bankable": true},
+  {"id": "metal_ore", "name": "Metal ore", "group": "intermediate"},
+  {"id": "carbon", "name": "Carbon", "group": "intermediate", "bankable": true},
+  {"id": "ice_crystal", "name": "Ice crystal", "group": "intermediate"},
+  {"id": "iron_plate", "name": "Iron plate", "group": "intermediate", "bankable": true},
+  {"id": "explosive", "name": "Explosive", "group": "intermediate"},
+  {"id": "alloy", "name": "Alloy", "group": "intermediate", "bankable": true},
+  {"id": "guidance_unit", "name": "Guidance unit", "group": "intermediate"},
+  {"id": "slugs", "name": "Slugs", "group": "supply"},
+  {"id": "flak_shell", "name": "Flak shells", "group": "supply"},
+  {"id": "missile", "name": "Missiles", "group": "supply"},
+  {"id": "rail_slug", "name": "Rail slugs", "group": "supply"},
+  {"id": "repair_kit", "name": "Repair kits", "group": "supply"}
+]

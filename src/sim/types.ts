@@ -2,7 +2,7 @@
 // render/, ui/ or the browser: this directory runs unchanged under Node.
 
 /** Bumped by any change that alters run outcomes. Invalidates stored benchmarks. */
-export const SIM_VERSION = 1;
+export const SIM_VERSION = 2;
 
 export type Rot = 0 | 90 | 180 | 270;
 
@@ -61,6 +61,55 @@ export interface AsteroidSizeDef {
   targetClass: string;
   /** Cells the damage may carry on to after the struck one. -1 = no limit. */
   spillCells: number;
+  /** Chunks dropped when shot down (never when rammed), each with dropChance. */
+  dropChunks: number;
+  dropChance: number;
+  /** Size id it breaks into when shot down, and how many. */
+  splitInto?: string;
+  splitCount?: number;
+}
+
+export interface ItemDef {
+  id: string;
+  name: string;
+  group: 'raw' | 'intermediate' | 'supply';
+  /** Goes to the stockpile when a run succeeds. */
+  bankable?: boolean;
+}
+
+export interface RecipeDef {
+  id: string;
+  /** Part id of the machine that runs it. */
+  machine: string;
+  inputs: Record<string, number>;
+  outputs: Record<string, number>;
+  seconds: number;
+  /** Fuel taken from the machine's network per craft. */
+  fuelIn?: number;
+  /** Fuel delivered into the machine's network per craft. */
+  fuelOut?: number;
+}
+
+export interface TurretDef {
+  part: string;
+  damageType: string;
+  range: number;
+  damage: number;
+  shotsPerSecond: number;
+  ammo: string;
+  ammoCapacity: number;
+  delivery: 'hitscan_spread';
+  /** Hit chance = target radius / (distance * spreadFactor), capped at 1. */
+  spreadFactor: number;
+}
+
+export interface TurretRules {
+  targetingIntervalTicks: number;
+  /** Targets a turret is this weak against are ignored unless nothing else is in range. */
+  minMultiplier: number;
+  threatHorizonSeconds: number;
+  multipliers: Record<string, Record<string, number>>;
+  turrets: TurretDef[];
 }
 
 export interface BehaviorDef {
@@ -125,6 +174,19 @@ export interface Constants {
     maxApproachDrift: number;
   };
   caps: { asteroids: number; projectiles: number; loose: number; enemies: number };
+  logistics: {
+    beltMoveTicks: number;
+    inserterTicks: number;
+    machineBufferCrafts: number;
+    collectorRange: number;
+    collectorPullSpeed: number;
+    collectorGrabRadius: number;
+    collectorIntakeTicks: number;
+    collectorBuffer: number;
+    repairTicks: number;
+    repairHp: number;
+    dropScatterSpeed: number;
+  };
   run: { outOfLaneSeconds: number; timeLimitFactor: number };
 }
 
@@ -135,6 +197,9 @@ export interface Content {
   asteroidSizes: AsteroidSizeDef[];
   materials: string[];
   behaviors: BehaviorDef[];
+  items: ItemDef[];
+  recipes: RecipeDef[];
+  turretRules: TurretRules;
 }
 
 /** Player input. Assist tools will add command types here; solo runs have none. */
@@ -150,8 +215,8 @@ export type FailureCause =
 
 export interface SimEvent {
   tick: number;
-  type: 'first_part_lost' | 'fuel_ran_dry' | 'part_lost' | 'parts_detached';
-  /** Part type id, or a count for parts_detached. */
+  type: 'first_part_lost' | 'fuel_ran_dry' | 'part_lost' | 'parts_detached' | 'supply_ran_dry';
+  /** Part type id, a count for parts_detached, or an item id for supply_ran_dry. */
   detail: string;
 }
 
@@ -167,6 +232,12 @@ export interface RunResult {
   laneShare: number;
   partsLost: number;
   fuelLeft: number;
+  /** Bankable materials in the core and storages. Empty unless the run succeeded. */
+  haul: Record<string, number>;
+  /** Rounds fired, by ammo item id. */
+  fired: Record<string, number>;
+  asteroidsShot: number;
+  chunksCollected: number;
   events: SimEvent[];
   /** Hash of the final sim state. Must match across Node, Chromium and WebKit. */
   stateHash: string;

@@ -8,6 +8,7 @@
 //   world = pos + R(theta) * (g - com),  R = [cos -sin; sin cos]
 // where pos is the world position of the center of mass.
 
+import { compile } from './compiled';
 import { dcos, dsin } from './dmath';
 import { designBounds, facing, partDefIndex, rotH, rotW, validateDesign } from './design';
 import type { Content, Design, PartDef } from './types';
@@ -27,6 +28,8 @@ export class Ship {
   // Parts, indexed by part id (the order they appear in the design)
   n = 0;
   defs: PartDef[] = [];
+  /** Index of each part's definition in content.parts. */
+  partDef!: Int16Array;
   partX!: Int16Array;
   partY!: Int16Array;
   partW!: Int16Array;
@@ -57,6 +60,42 @@ export class Ship {
   thrEff!: Float64Array;
   /** Gyro command, -1..1, times constants.gyroTorque. */
   gyro = 0;
+
+  // Logistics. Every part has an inventory row; belts hold their one item in beltItem.
+  nItems = 0;
+  /** Item counts, [part * nItems + item]. */
+  inv!: Int32Array;
+  /** Facing: 0 forward (-y), 1 right, 2 back, 3 left. */
+  partDir!: Int8Array;
+  /** Machine's current recipe index, or -1. */
+  partRecipe!: Int16Array;
+  /** 1 when the recipe was set at the hub; 0 when the machine picks by input. */
+  partFixedRecipe!: Uint8Array;
+  /** Ticks left on the craft in progress; 0 when idle. */
+  partProgress!: Int16Array;
+  /** Belt: ticks its item has sat there. Inserter and collector: cooldown ticks left. */
+  partTimer!: Int16Array;
+  beltItem!: Int8Array;
+  /** Belt the item moves on to, or -1. */
+  beltNext!: Int16Array;
+  /** Belts sorted head of line first. */
+  beltOrder!: Int16Array;
+  nBelts = 0;
+  /** Inserter source and destination cells, or -1 when off the grid. */
+  insSrc!: Int32Array;
+  insDst!: Int32Array;
+  insFilter!: Int8Array;
+  /** Part ids by role, in part-id order. */
+  inserters: number[] = [];
+  machines: number[] = [];
+  collectors: number[] = [];
+  turrets: number[] = [];
+  stores: number[] = [];
+  turCooldown!: Float64Array;
+  /** Target asteroid slot and its id, or -1. */
+  turTarget!: Int16Array;
+  turTargetId!: Int32Array;
+  repairTimer = 0;
 
   // Fuel networks
   netCount = 0;
@@ -125,6 +164,7 @@ export function buildShip(content: Content, design: Design): Ship {
 
   const n = design.parts.length;
   s.n = n;
+  s.partDef = new Int16Array(n);
   s.partX = new Int16Array(n);
   s.partY = new Int16Array(n);
   s.partW = new Int16Array(n);
@@ -135,6 +175,23 @@ export function buildShip(content: Content, design: Design): Ship {
   s.partItems = new Int32Array(n);
   s.partNet = new Int16Array(n).fill(-1);
   s.lostQueue = new Int16Array(n);
+  const cc = compile(content);
+  s.nItems = cc.nItems;
+  s.inv = new Int32Array(n * cc.nItems);
+  s.partDir = new Int8Array(n);
+  s.partRecipe = new Int16Array(n).fill(-1);
+  s.partFixedRecipe = new Uint8Array(n);
+  s.partProgress = new Int16Array(n);
+  s.partTimer = new Int16Array(n);
+  s.beltItem = new Int8Array(n).fill(-1);
+  s.beltNext = new Int16Array(n).fill(-1);
+  s.beltOrder = new Int16Array(n);
+  s.insSrc = new Int32Array(n).fill(-1);
+  s.insDst = new Int32Array(n).fill(-1);
+  s.insFilter = new Int8Array(n).fill(-1);
+  s.turCooldown = new Float64Array(n);
+  s.turTarget = new Int16Array(n).fill(-1);
+  s.turTargetId = new Int32Array(n).fill(-1);
   s.netAvail = new Float64Array(n + 1);
   s.netRequest = new Float64Array(n + 1);
 
@@ -159,6 +216,7 @@ export function buildShip(content: Content, design: Design): Ship {
     const px = p.x - b.minX;
     const py = p.y - b.minY;
     s.defs.push(def);
+    s.partDef[i] = partDefIndex(content, p.type);
     s.partX[i] = px;
     s.partY[i] = py;
     s.partW[i] = w;
@@ -169,6 +227,29 @@ export function buildShip(content: Content, design: Design): Ship {
     }
     if (def.kind === 'core') s.corePart = i;
     if (def.kind === 'computer') s.computerPart = i;
+    const [dx, dy] = facing(p.rot);
+    s.partDir[i] = p.rot / 90;
+    if (def.kind === 'core' || def.kind === 'storage') s.stores.push(i);
+    if (def.kind === 'collector') s.collectors.push(i);
+    if (def.kind === 'turret') s.turrets.push(i);
+    if (def.kind === 'inserter') {
+      s.inserters.push(i);
+      const sx = px - dx, sy = py - dy, tx = px + dx, ty = py + dy;
+      if (sx >= 0 && sy >= 0 && sx < b.w && sy < b.h) s.insSrc[i] = sy * b.w + sx;
+      if (tx >= 0 && ty >= 0 && tx < b.w && ty < b.h) s.insDst[i] = ty * b.w + tx;
+      if (p.filter) s.insFilter[i] = cc.itemIndex[p.filter];
+    }
+    if (def.kind === 'machine') {
+      s.machines.push(i);
+      const options = cc.recipesByMachine[partDefIndex(content, p.type)];
+      if (p.recipe) {
+        s.partRecipe[i] = cc.recipes.findIndex((r) => r.id === p.recipe);
+        s.partFixedRecipe[i] = 1;
+      } else if (options.length === 1) {
+        s.partRecipe[i] = options[0];
+        s.partFixedRecipe[i] = 1;
+      }
+    }
     if (def.kind === 'thruster') {
       const t = s.nThr++;
       const [fx, fy] = facing(p.rot);
@@ -183,6 +264,7 @@ export function buildShip(content: Content, design: Design): Ship {
   });
 
   rebuildFuelNetworks(s);
+  rebuildBelts(s);
   recomputeMass(s, content, false);
   return s;
 }
@@ -294,6 +376,9 @@ function destroyPart(s: Ship, p: number): void {
   s.partFuel[p] = 0;
   s.partItems[p] = 0;
   s.partNet[p] = -1;
+  s.inv.fill(0, p * s.nItems, (p + 1) * s.nItems);
+  s.beltItem[p] = -1;
+  s.partProgress[p] = 0;
   const x0 = s.partX[p];
   const y0 = s.partY[p];
   for (let y = y0; y < y0 + s.partH[p]; y++) {
@@ -378,6 +463,7 @@ export function resolveStructure(s: Ship, content: Content): number {
   }
   s.structureDirty = false;
   rebuildFuelNetworks(s);
+  rebuildBelts(s);
   recomputeMass(s, content, true);
   return detached;
 }
@@ -520,5 +606,68 @@ export function resolveFuel(s: Ship, dt: number): void {
     if (req <= 0) continue;
     if (req >= avail) s.partFuel[p] = 0;
     else s.partFuel[p] -= req * (s.partFuel[p] / avail);
+  }
+}
+
+/** Adds n of an item to a part's inventory and keeps its cargo count in step. */
+export function addItem(s: Ship, p: number, item: number, n: number): void {
+  s.inv[p * s.nItems + item] += n;
+  s.partItems[p] += n;
+}
+
+export function itemCount(s: Ship, p: number, item: number): number {
+  return s.inv[p * s.nItems + item];
+}
+
+/** Total of one item across every part. */
+export function shipItemCount(s: Ship, item: number): number {
+  let n = 0;
+  for (let p = 0; p < s.n; p++) n += s.inv[p * s.nItems + item];
+  return n;
+}
+
+const DIR_X = [0, 1, 0, -1];
+const DIR_Y = [-1, 0, 1, 0];
+
+/**
+ * Works out where each belt hands its item on, and an update order that runs
+ * from the head of each line backward so a full line moves together. A belt
+ * feeds the belt it points at, including into its side, but not head-on.
+ */
+export function rebuildBelts(s: Ship): void {
+  const { gw, gh } = s;
+  const depth = s.stack;
+  let count = 0;
+  for (let p = 0; p < s.n; p++) {
+    s.beltNext[p] = -1;
+    if (!s.partAlive[p] || s.defs[p].kind !== 'belt') continue;
+    s.beltOrder[count++] = p;
+    const d = s.partDir[p];
+    const x = s.partX[p] + DIR_X[d];
+    const y = s.partY[p] + DIR_Y[d];
+    if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+    const q = s.cellPart[y * gw + x];
+    if (q >= 0 && s.defs[q].kind === 'belt' && ((s.partDir[q] + 2) & 3) !== d) s.beltNext[p] = q;
+  }
+  s.nBelts = count;
+  // Depth = hops to the head of the line. Belts in a loop get a depth past every line.
+  for (let i = 0; i < count; i++) {
+    let p: number = s.beltOrder[i];
+    let hops = 0;
+    while (s.beltNext[p] >= 0 && hops <= count) {
+      p = s.beltNext[p];
+      hops++;
+    }
+    depth[s.beltOrder[i]] = hops > count ? count + 1 : hops;
+  }
+  // Insertion sort by (depth, part id); beltOrder starts in part-id order.
+  for (let i = 1; i < count; i++) {
+    const p = s.beltOrder[i];
+    let j = i - 1;
+    while (j >= 0 && depth[s.beltOrder[j]] > depth[p]) {
+      s.beltOrder[j + 1] = s.beltOrder[j];
+      j--;
+    }
+    s.beltOrder[j + 1] = p;
   }
 }

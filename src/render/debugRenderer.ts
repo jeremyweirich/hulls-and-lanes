@@ -10,6 +10,9 @@ const KIND_COLOR: Record<PartKind, string> = {
   computer: '#5fd97a', turret: '#d94f5c', armor: '#59616f', generator: '#d9c23f', shield: '#4fd0e0',
 };
 const MATERIAL_COLOR = ['#8d939e', '#5b5148', '#9fc4d9'];
+const ITEM_COLOR: Record<string, string> = {
+  raw: '#c9a36a', intermediate: '#d7dde8', supply: '#ffd84a',
+};
 
 const AHEAD = 40;
 /** Share of the view height above the ship. */
@@ -108,6 +111,32 @@ export class DebugRenderer {
       ctx.globalAlpha = 1;
     }
 
+    // Loose chunks waiting to be collected.
+    const l = sim.loose;
+    for (let i = 0; i < l.high; i++) {
+      if (!l.alive[i]) continue;
+      ctx.fillStyle = ITEM_COLOR[sim.content.items[l.item[i]].group];
+      const x = toX(lerp(l.prevX[i], l.x[i]));
+      const y = toY(lerp(l.prevY[i], l.y[i]));
+      ctx.fillRect(x - 2, y - 2, 4, 4);
+    }
+
+    // Lines from each turret to its target.
+    ctx.strokeStyle = '#d94f5c66';
+    ctx.lineWidth = 1;
+    for (const p of ship.turrets) {
+      const target = ship.turTarget[p];
+      if (!ship.partAlive[p] || target < 0 || !a.alive[target]) continue;
+      const dx = ship.partX[p] + ship.partW[p] / 2 - ship.comX;
+      const dy = ship.partY[p] + ship.partH[p] / 2 - ship.comY;
+      const c = Math.cos(theta);
+      const s = Math.sin(theta);
+      ctx.beginPath();
+      ctx.moveTo(toX(sx + c * dx - s * dy), toY(sy + s * dx + c * dy));
+      ctx.lineTo(toX(lerp(a.prevX[target], a.x[target])), toY(lerp(a.prevY[target], a.y[target])));
+      ctx.stroke();
+    }
+
     // Ship, drawn in grid space.
     ctx.save();
     ctx.translate(toX(sx), toY(sy));
@@ -136,6 +165,23 @@ export class DebugRenderer {
         ctx.strokeStyle = '#ff5c5c';
         ctx.lineWidth = 0.08;
         ctx.strokeRect(ship.partX[p] + 0.08, ship.partY[p] + 0.08, ship.partW[p] - 0.16, ship.partH[p] - 0.16);
+      }
+    }
+
+    // Items on belts, and a bar on each part showing how full it is.
+    for (let p = 0; p < ship.n; p++) {
+      if (!ship.partAlive[p]) continue;
+      const def = ship.defs[p];
+      if (def.kind === 'belt' && ship.beltItem[p] >= 0) {
+        ctx.fillStyle = ITEM_COLOR[sim.content.items[ship.beltItem[p]].group];
+        ctx.fillRect(ship.partX[p] + 0.3, ship.partY[p] + 0.3, 0.4, 0.4);
+      } else if (ship.partItems[p] > 0 && def.kind !== 'belt') {
+        const cap = def.itemCapacity ?? (def.kind === 'turret' ? 20 : def.kind === 'collector' ? 10 : 8);
+        const fill = Math.min(1, ship.partItems[p] / cap);
+        ctx.fillStyle = '#0b0e14';
+        ctx.fillRect(ship.partX[p] + 0.2, ship.partY[p] + ship.partH[p] - 0.5, ship.partW[p] - 0.4, 0.22);
+        ctx.fillStyle = '#ffd84a';
+        ctx.fillRect(ship.partX[p] + 0.2, ship.partY[p] + ship.partH[p] - 0.5, (ship.partW[p] - 0.4) * fill, 0.22);
       }
     }
 

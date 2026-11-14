@@ -37,7 +37,9 @@ export interface CaseResult {
 
 export function runCases(): CaseResult[] {
   const out: CaseResult[] = [];
-  for (const [name, design] of [['starter', designs.starter], ['lopsided', lopsided]] as const) {
+  for (const [name, design] of [
+    ['starter', designs.starter], ['reference1', designs.reference1], ['lopsided', lopsided],
+  ] as const) {
     for (const seed of [1, 2, 3, 6, 9, 1234567, 4294967295]) {
       const r = runHeadless(content, design, lanes.lane1, seed);
       out.push({ id: `${name}/lane1/${seed}`, outcome: r.cause ?? r.outcome, ticks: r.ticks, stateHash: r.stateHash });

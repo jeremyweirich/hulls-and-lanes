@@ -5,25 +5,38 @@
 import { Asteroids, Spawner } from './asteroids';
 import { Autopilot, type FlightView } from './autopilot';
 import { collideAsteroids } from './collide';
+import { compile, type Compiled } from './compiled';
 import { checkLaunch } from './design';
 import { wrapAngle } from './dmath';
 import { Hasher } from './hash';
+import { stepBelts, stepCollectors, stepInserters, stepMachines, stepRepair } from './logistics';
+import { Loose } from './loose';
+import { Rng, seedFor, STREAM_LOOT, STREAM_SPREAD } from './rng';
 import {
-  buildShip, coreWorldX, coreWorldY, loadFuel, placeGridPointAt, recomputeMass,
+  addItem, buildShip, coreWorldX, coreWorldY, loadFuel, placeGridPointAt, recomputeMass,
   resolveFuel, resolveStructure, totalFuel, updateRotation, type Ship,
 } from './ship';
+import { stepTurrets, type CombatView } from './turrets';
 import {
   SIM_VERSION, type Content, type Design, type FailureCause, type LaneDef,
   type Outcome, type RunResult, type SimCommand, type SimEvent,
 } from './types';
 
-export class Sim implements FlightView {
+export class Sim implements FlightView, CombatView {
   readonly content: Content;
   readonly lane: LaneDef;
   readonly seed: number;
   readonly ship: Ship;
   readonly asteroids: Asteroids;
+  readonly loose: Loose;
   readonly autopilot: Autopilot;
+  readonly compiled: Compiled;
+  readonly spreadRng: Rng;
+  readonly lootRng: Rng;
+  readonly fired: Int32Array;
+  readonly dryLogged: Uint8Array;
+  asteroidsShot = 0;
+  chunksCollected = 0;
   readonly dt: number;
 
   tick = 0;
@@ -56,9 +69,20 @@ export class Sim implements FlightView {
     // Linear drag as a per-tick factor: about 3% of speed lost each second.
     this.dragFactor = 1 - k.linearDragPerSecond * this.dt;
 
-    // Load: fuel is split across the tanks. Ammo joins in with turrets.
+    const cc = compile(content);
+    this.compiled = cc;
+    this.spreadRng = new Rng(seedFor(this.seed, STREAM_SPREAD));
+    this.lootRng = new Rng(seedFor(this.seed, STREAM_LOOT));
+    this.fired = new Int32Array(cc.nItems);
+    this.dryLogged = new Uint8Array(cc.nItems);
+
+    // Load: fuel is split across the tanks; ammo fills matching turrets evenly,
+    // then the core. Anything the ship has no place for is left behind.
     this.ship = buildShip(content, design);
     loadFuel(this.ship, lane.allowance.fuel ?? 0);
+    for (const [id, amount] of Object.entries(lane.allowance)) {
+      if (id !== 'fuel') this.loadSupply(cc.itemIndex[id], amount);
+    }
     recomputeMass(this.ship, content, false);
 
     // Start: core on the center line at lane distance 0, at rest, facing forward.
@@ -69,8 +93,35 @@ export class Sim implements FlightView {
     s.prevY = s.y;
 
     this.asteroids = new Asteroids(k.caps.asteroids);
+    this.loose = new Loose(k.caps.loose);
     this.spawner = new Spawner(content, lane, this.seed);
     this.autopilot = new Autopilot(content, design, s);
+  }
+
+  private loadSupply(item: number, amount: number): void {
+    const s = this.ship;
+    const cc = this.compiled;
+    let left = amount;
+    for (let pass = 0; pass < 8 && left > 0; pass++) {
+      let open = 0;
+      for (const p of s.turrets) {
+        const t = cc.turrets[s.partDef[p]];
+        if (t && t.ammo === item && s.inv[p * s.nItems + item] < t.def.ammoCapacity) open++;
+      }
+      if (open === 0) break;
+      const share = Math.ceil(left / open);
+      for (const p of s.turrets) {
+        const t = cc.turrets[s.partDef[p]];
+        if (!t || t.ammo !== item || left <= 0) continue;
+        const room = t.def.ammoCapacity - s.inv[p * s.nItems + item];
+        const add = Math.min(share, room, left);
+        addItem(s, p, item, add);
+        left -= add;
+      }
+    }
+    const core = s.corePart;
+    const room = (s.defs[core].itemCapacity ?? 0) - s.partItems[core];
+    addItem(s, core, item, Math.max(0, Math.min(left, room)));
   }
 
   /** Queues a live command. It is applied at the start of its tick. */
@@ -159,10 +210,31 @@ export class Sim implements FlightView {
       if (asteroids.y[i] > behind) asteroids.remove(i);
     }
 
+    const loose = this.loose;
+    for (let i = 0; i < loose.high; i++) {
+      if (!loose.alive[i]) continue;
+      loose.prevX[i] = loose.x[i];
+      loose.prevY[i] = loose.y[i];
+      loose.x[i] += loose.vx[i] * dt;
+      loose.y[i] += loose.vy[i] * dt;
+      if (loose.y[i] > behind) loose.remove(i);
+    }
+
     // 6. Collisions and damage.
     collideAsteroids(ship, asteroids, content);
 
-    // 7. Turrets, and 8. logistics, arrive with milestone 3.
+    // 7. Turrets: acquire targets, fire, consume ammo.
+    if (!ship.coreDestroyed) stepTurrets(this);
+
+    // 8. Logistics: collectors, belts, inserters, machines, core repair.
+    if (!ship.coreDestroyed) {
+      const cc = this.compiled;
+      stepCollectors(ship, loose, content, dt, this);
+      stepBelts(ship, content);
+      stepInserters(ship, content, cc);
+      stepMachines(ship, content, cc);
+      stepRepair(ship, content, cc);
+    }
 
     // 9. Structure: log losses, detach what is cut off, refresh mass properties.
     if (ship.structureDirty) {
@@ -235,12 +307,35 @@ export class Sim implements FlightView {
       h.num(a.x[i]).num(a.y[i]).num(a.vx[i]).num(a.vy[i]).num(a.hp[i]);
     }
     for (const slot of this.autopilot.slots) h.int(slot.active ? 1 : 0).int(slot.activeSince);
+    const l = this.loose;
+    h.ints(s.inv, s.n * s.nItems).ints(s.beltItem, s.n).ints(s.partTimer, s.n);
+    h.ints(s.partRecipe, s.n).ints(s.partProgress, s.n).nums(s.turCooldown, s.n);
+    h.ints(s.turTargetId, s.n).int(s.repairTimer);
+    h.int(this.spreadRng.state).int(this.lootRng.state).ints(this.fired, this.fired.length);
+    h.int(l.high).int(l.live);
+    for (let i = 0; i < l.high; i++) {
+      h.int(l.alive[i]);
+      if (!l.alive[i]) continue;
+      h.int(l.item[i]).int(l.seq[i]).num(l.x[i]).num(l.y[i]).num(l.vx[i]).num(l.vy[i]);
+    }
     return h.hex();
   }
 
   result(): RunResult {
     if (this.outcome === 'running') throw new Error('The run has not ended.');
     const share = this.distance / this.lane.length;
+    const s = this.ship;
+    const items = this.content.items;
+    const haul: Record<string, number> = {};
+    if (this.outcome === 'success') {
+      for (const item of this.compiled.bankable) {
+        let n = 0;
+        for (const p of s.stores) n += s.inv[p * s.nItems + item];
+        if (n > 0) haul[items[item].id] = n;
+      }
+    }
+    const fired: Record<string, number> = {};
+    for (let i = 0; i < this.fired.length; i++) if (this.fired[i] > 0) fired[items[i].id] = this.fired[i];
     return {
       simVersion: SIM_VERSION,
       laneId: this.lane.id,
@@ -252,6 +347,10 @@ export class Sim implements FlightView {
       laneShare: share > 1 ? 1 : share > 0 ? share : 0,
       partsLost: this.ship.partsLost,
       fuelLeft: totalFuel(this.ship),
+      haul,
+      fired,
+      asteroidsShot: this.asteroidsShot,
+      chunksCollected: this.chunksCollected,
       events: this.events,
       stateHash: this.stateHash(),
     };

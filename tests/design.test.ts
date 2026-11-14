@@ -63,11 +63,21 @@ describe('design validation', () => {
     expect(validateDesign(content, d).join()).toMatch(/Unknown behavior/);
   });
 
+  it('checks recipes and filters', () => {
+    const d = design(rect(0, 0, 6, 3), [part('core', 0, 0), part('smelter', 3, 0, 0, { recipe: 'slugs' })]);
+    expect(validateDesign(content, d).join()).toMatch(/Smelter cannot run "slugs"/);
+    d.parts[1] = part('fabricator', 3, 0, 0, { recipe: 'gold' });
+    expect(validateDesign(content, d).join()).toMatch(/unknown recipe/);
+    d.parts[1] = part('inserter', 3, 0, 0, { filter: 'gold' });
+    expect(validateDesign(content, d).join()).toMatch(/unknown item/);
+  });
+
   it('checks size against the lane at launch only', () => {
     const big = design(rect(0, 0, 9, 3), [part('core', 0, 0)]);
     expect(validateDesign(content, big)).toEqual([]);
     expect(checkLaunch(content, big, lanes.lane1).join()).toMatch(/9x3.*8x12/);
-    expect(designBounds(designs.starter)).toMatchObject({ w: 7, h: 11 });
+    expect(designBounds(designs.starter)).toMatchObject({ w: 8, h: 11 });
+    expect(checkLaunch(content, designs.reference1, lanes.lane1)).toEqual([]);
   });
 });
 

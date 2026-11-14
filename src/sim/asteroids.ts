@@ -20,6 +20,9 @@ export class Asteroids {
   readonly hp: Float64Array;
   readonly prevX: Float64Array;
   readonly prevY: Float64Array;
+  /** Unique per asteroid, so a reused slot is never mistaken for an old target. */
+  readonly id: Int32Array;
+  private nextId = 0;
 
   constructor(cap: number) {
     this.cap = cap;
@@ -33,6 +36,7 @@ export class Asteroids {
     this.hp = new Float64Array(cap);
     this.prevX = new Float64Array(cap);
     this.prevY = new Float64Array(cap);
+    this.id = new Int32Array(cap);
   }
 
   /** Takes the lowest free slot. The caller has checked there is room. */
@@ -48,6 +52,7 @@ export class Asteroids {
     this.vx[i] = vx;
     this.vy[i] = vy;
     this.hp[i] = hp;
+    this.id[i] = this.nextId++;
     this.live++;
     return i;
   }

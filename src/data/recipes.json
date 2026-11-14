@@ -1,0 +1,15 @@
+[
+  {"id": "crush_metal", "machine": "crusher", "inputs": {"metal_chunk": 1}, "outputs": {"metal_ore": 2}, "seconds": 1},
+  {"id": "crush_carbon", "machine": "crusher", "inputs": {"carbon_chunk": 1}, "outputs": {"carbon": 2}, "seconds": 1},
+  {"id": "crush_ice", "machine": "crusher", "inputs": {"ice_chunk": 1}, "outputs": {"ice_crystal": 2}, "seconds": 1},
+  {"id": "iron_plate", "machine": "smelter", "inputs": {"metal_ore": 1}, "outputs": {"iron_plate": 1}, "seconds": 1.5},
+  {"id": "slugs", "machine": "fabricator", "inputs": {"iron_plate": 1}, "outputs": {"slugs": 8}, "seconds": 1},
+  {"id": "repair_kit", "machine": "fabricator", "inputs": {"iron_plate": 2}, "outputs": {"repair_kit": 1}, "seconds": 2},
+  {"id": "flak_shell", "machine": "fabricator", "inputs": {"iron_plate": 1, "explosive": 1}, "outputs": {"flak_shell": 2}, "seconds": 2},
+  {"id": "guidance_unit", "machine": "fabricator", "inputs": {"scrap": 1, "iron_plate": 1}, "outputs": {"guidance_unit": 1}, "seconds": 3},
+  {"id": "missile", "machine": "fabricator", "inputs": {"iron_plate": 1, "explosive": 2, "guidance_unit": 1}, "outputs": {"missile": 1}, "seconds": 4},
+  {"id": "rail_slug", "machine": "fabricator", "inputs": {"alloy": 1}, "outputs": {"rail_slug": 2}, "seconds": 3},
+  {"id": "explosive", "machine": "chem_plant", "inputs": {"carbon": 2}, "outputs": {"explosive": 1}, "seconds": 2},
+  {"id": "fuel", "machine": "chem_plant", "inputs": {"ice_crystal": 2}, "outputs": {}, "fuelOut": 5, "seconds": 2},
+  {"id": "alloy", "machine": "alloy_furnace", "inputs": {"iron_plate": 2, "carbon": 1}, "outputs": {"alloy": 1}, "fuelIn": 1, "seconds": 4}
+]

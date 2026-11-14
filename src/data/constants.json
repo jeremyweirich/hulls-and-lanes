@@ -30,6 +30,19 @@
     "loose": 200,
     "enemies": 6
   },
+  "logistics": {
+    "beltMoveTicks": 15,
+    "inserterTicks": 20,
+    "machineBufferCrafts": 2,
+    "collectorRange": 6,
+    "collectorPullSpeed": 8,
+    "collectorGrabRadius": 0.8,
+    "collectorIntakeTicks": 30,
+    "collectorBuffer": 10,
+    "repairTicks": 60,
+    "repairHp": 50,
+    "dropScatterSpeed": 0.5
+  },
   "run": {
     "outOfLaneSeconds": 10,
     "timeLimitFactor": 3

@@ -125,6 +125,14 @@ export function validateDesign(content: Content, design: Design): string[] {
         if (!content.behaviors.some((d) => d.id === b.id)) errors.push(`Unknown behavior "${b.id}".`);
       }
     }
+    if (p.recipe !== undefined) {
+      const recipe = content.recipes.find((r) => r.id === p.recipe);
+      if (!recipe) errors.push(`Part ${i} (${p.type}) has unknown recipe "${p.recipe}".`);
+      else if (recipe.machine !== def.id) errors.push(`Part ${i}: a ${def.name} cannot run "${p.recipe}".`);
+    }
+    if (p.filter != null && !content.items.some((it) => it.id === p.filter)) {
+      errors.push(`Part ${i} (${p.type}) filters on unknown item "${p.filter}".`);
+    }
     if (def.kind === 'thruster') {
       for (const [x, y] of nozzleCells(def, p)) {
         if (x >= 0 && y >= 0 && x < MAX_GRID && y < MAX_GRID && tiles.has(key(x, y))) {

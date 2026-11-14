@@ -207,11 +207,17 @@ describe('spawning', () => {
       expect(-big.y[i]).toBeGreaterThanOrEqual(lanes.lane1.clearStart);
       expect(Math.abs(big.x[i])).toBeLessThanOrEqual(lanes.lane1.width / 2);
     }
-    // Expected per run: pebbles 3*3.6 + 4*5 + 5*3 = 45.8, rocks 0.6*3.6 + 1.2*5 + 1.8*3 = 13.56.
-    expect(pebbles / 50).toBeGreaterThan(43);
-    expect(pebbles / 50).toBeLessThan(48.5);
-    expect(rocks / 50).toBeGreaterThan(12);
-    expect(rocks / 50).toBeLessThan(15);
+    // Expected per run, from the lane's segments (the first 40 u are clear).
+    let wantPebbles = 0;
+    let wantRocks = 0;
+    let from = lanes.lane1.clearStart;
+    for (const seg of lanes.lane1.segments) {
+      wantPebbles += (seg.per100u.pebble * (seg.to - from)) / 100;
+      wantRocks += (seg.per100u.rock * (seg.to - from)) / 100;
+      from = seg.to;
+    }
+    expect(Math.abs(pebbles / 50 - wantPebbles)).toBeLessThan(wantPebbles * 0.05);
+    expect(Math.abs(rocks / 50 - wantRocks)).toBeLessThan(wantRocks * 0.08);
     sp.step(a, 0);
     expect(a.live).toBeLessThanOrEqual(K.caps.asteroids);
   });
@@ -260,5 +266,13 @@ describe('determinism', () => {
     expect(r.outcome).toBe('success');
     expect(r.seconds).toBeGreaterThan(200);
     expect(r.seconds).toBeLessThan(230);
+  });
+
+  it('meets the factory milestone: launches with 80 slugs, fires more than 500', () => {
+    const r = runHeadless(content, designs.reference1, lanes.lane1, 5);
+    expect(lanes.lane1.allowance.slugs).toBe(80);
+    expect(r.outcome).toBe('success');
+    expect(r.fired.slugs).toBeGreaterThan(500);
+    expect(r.haul.iron_plate).toBeGreaterThan(20);
   });
 });
